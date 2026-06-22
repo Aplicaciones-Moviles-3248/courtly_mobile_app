@@ -5,8 +5,14 @@ import 'package:http/http.dart' as http;
 import '../storage/local_storage_service.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://10.0.2.2:8080/api/v1';
-  //static const String baseUrl = 'http://localhost:8080/api/v1';
+  // Base URL del backend. Por defecto apunta al backend desplegado en Render.
+  // Para usar un backend local, ejecutar con:
+  //   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api/v1   (emulador Android)
+  //   flutter run --dart-define=API_BASE_URL=http://localhost:8080/api/v1  (iOS / web / desktop)
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://courtly-backend.onrender.com/api/v1',
+  );
 
   final LocalStorageService localStorageService;
 
