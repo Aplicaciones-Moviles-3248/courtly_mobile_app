@@ -44,14 +44,29 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'BUSQUEDA DE CANCHAS',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.4,
-                ),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'BUSQUEDA DE CANCHAS',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () =>
+                        Navigator.pushNamed(context, AppRoutes.payments),
+                    icon: const Icon(
+                      Icons.receipt_long_outlined,
+                      color: AppColors.textPrimary,
+                    ),
+                    tooltip: 'Mis pagos',
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               const Text(
