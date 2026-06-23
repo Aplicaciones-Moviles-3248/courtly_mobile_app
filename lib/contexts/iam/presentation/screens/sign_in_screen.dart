@@ -151,11 +151,28 @@ class _SignInScreenState extends State<SignInScreen> {
               padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
               child: Column(
                 children: [
-                  Image.asset(
-                    'assets/images/logo_courtly.png',
-                    width: 86,
-                    height: 86,
-                    fit: BoxFit.contain,
+                  Container(
+                    width: 72,
+                    height: 72,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/logo_courtly.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 18),
                   const Text(

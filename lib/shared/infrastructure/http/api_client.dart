@@ -5,7 +5,8 @@ import 'package:http/http.dart' as http;
 import '../storage/local_storage_service.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://10.0.2.2:8080/api/v1';
+  static const String baseUrl = 'https://courtly-backend.onrender.com/api/v1';
+  //static const String baseUrl = 'http://10.0.2.2:8080/api/v1';
   //static const String baseUrl = 'http://localhost:8080/api/v1';
 
   final LocalStorageService localStorageService;
