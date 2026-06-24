@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:courtly_mobile_app/app/courtly_app.dart';
 import 'package:courtly_mobile_app/contexts/iam/presentation/screens/sign_in_screen.dart';
 
 void main() {
@@ -30,5 +31,14 @@ void main() {
 
     expect(find.text('Nombre completo'), findsOneWidget);
     expect(find.text('Tipo de cuenta'), findsOneWidget);
+  });
+
+  testWidgets('CourtlyApp arranca sin sesión en la pantalla de autenticación',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const CourtlyApp());
+    // El SessionGate resuelve la sesión de forma asíncrona; esperar a que asiente.
+    await tester.pumpAndSettle();
+
+    expect(find.text('Crear cuenta'), findsOneWidget);
   });
 }
