@@ -1,30 +1,34 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:courtly_mobile_app/main.dart';
+import 'package:courtly_mobile_app/contexts/iam/presentation/screens/sign_in_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('SignInScreen muestra las pestañas de autenticación',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: SignInScreen()));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Iniciar sesión'), findsWidgets);
+    expect(find.text('Crear cuenta'), findsOneWidget);
+  });
+
+  testWidgets('SignInScreen alterna al formulario de registro',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: SignInScreen()));
+    await tester.pump();
+
+    await tester.tap(find.text('Crear cuenta'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Nombre completo'), findsOneWidget);
+    expect(find.text('Tipo de cuenta'), findsOneWidget);
   });
 }

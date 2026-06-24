@@ -15,12 +15,26 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   @override
   Future<AuthenticatedUser> signIn(String username, String password) async {
     final authenticatedUser = await dataSource.signIn(username, password);
-    await localStorageService.saveToken(authenticatedUser.token);
+    await localStorageService.saveSession(
+      userId: authenticatedUser.id,
+      username: authenticatedUser.username,
+      token: authenticatedUser.token,
+    );
     return authenticatedUser;
   }
 
   @override
   Future<int> signUp(String username, String password, List<String> roles) {
     return dataSource.signUp(username, password, roles);
+  }
+
+  @override
+  Future<bool> hasActiveSession() {
+    return localStorageService.hasActiveSession();
+  }
+
+  @override
+  Future<void> signOut() {
+    return localStorageService.clearSession();
   }
 }
