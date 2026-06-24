@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
+import '../../../../shared/infrastructure/http/api_exception.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
 import '../../application/use_cases/sign_in_use_case.dart';
 import '../../application/use_cases/sign_up_use_case.dart';
@@ -75,10 +76,17 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
 
       Navigator.pushReplacementNamed(context, AppRoutes.profile);
-    } catch (error) {
+    } on ApiException catch (error) {
       setState(() {
         isLoading = false;
-        errorMessage = 'No se pudo iniciar sesión. Verifica tus credenciales.';
+        errorMessage = error.isConnectivity
+            ? 'No se pudo conectar con el servidor. Puede estar iniciando, intenta de nuevo en unos segundos.'
+            : 'No se pudo iniciar sesión. Verifica tus credenciales.';
+      });
+    } catch (_) {
+      setState(() {
+        isLoading = false;
+        errorMessage = 'No se pudo iniciar sesión. Intenta de nuevo.';
       });
     }
   }
@@ -120,10 +128,17 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
 
       Navigator.pushReplacementNamed(context, AppRoutes.profile);
-    } catch (error) {
+    } on ApiException catch (error) {
       setState(() {
         isLoading = false;
-        errorMessage = 'No se pudo crear la cuenta. Revisa los datos o intenta con otro correo.';
+        errorMessage = error.isConnectivity
+            ? 'No se pudo conectar con el servidor. Puede estar iniciando, intenta de nuevo en unos segundos.'
+            : 'No se pudo crear la cuenta. Revisa los datos o intenta con otro correo.';
+      });
+    } catch (_) {
+      setState(() {
+        isLoading = false;
+        errorMessage = 'No se pudo crear la cuenta. Intenta de nuevo.';
       });
     }
   }
