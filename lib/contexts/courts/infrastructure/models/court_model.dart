@@ -18,19 +18,39 @@ class CourtModel extends Court {
     final location = json['location'] ?? '';
     final type = json['type'] ?? '';
     final name = json['name'] ?? '';
+    final id = json['id'].toString();
+    final price = _toDouble(json['pricePerHour']);
 
     return CourtModel(
-      id: json['id'].toString(),
+      id: id,
       name: name,
       district: location,
       sport: type,
       description: 'Cancha de $type ubicada en $location, disponible para reservas en Courtly.',
       address: location,
-      pricePerHour: _toDouble(json['pricePerHour']),
-      availableSchedules: 0,
+      pricePerHour: price,
+      availableSchedules: _buildTemporaryAvailableSchedules(id),
       imageUrl: json['imageUrl'] ?? '',
       isAvailable: true,
     );
+  }
+
+  static int _buildTemporaryAvailableSchedules(String id) {
+    final numericId = int.tryParse(id) ?? 1;
+
+    if (numericId % 4 == 0) {
+      return 0;
+    }
+
+    if (numericId % 3 == 0) {
+      return 1;
+    }
+
+    if (numericId % 2 == 0) {
+      return 2;
+    }
+
+    return 3;
   }
 
   static double _toDouble(dynamic value) {
