@@ -227,10 +227,10 @@ class _ReviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Sofia Ramirez',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -238,8 +238,8 @@ class _ReviewCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 2),
-          Text(
+          const SizedBox(height: 2),
+          const Text(
             'Jugador',
             style: TextStyle(
               color: AppColors.primaryDark,
@@ -247,16 +247,19 @@ class _ReviewCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            '★★★★★',
-            style: TextStyle(
-              color: AppColors.warning,
-              fontSize: 13,
+          const SizedBox(height: 8),
+          Semantics(
+            label: 'Calificación 5 de 5 estrellas',
+            child: const Text(
+              '★★★★★',
+              style: TextStyle(
+                color: AppColors.warning,
+                fontSize: 13,
+              ),
             ),
           ),
-          SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 8),
+          const Text(
             'Buen mantenimiento y acceso rapido.',
             style: TextStyle(
               color: AppColors.textSecondary,

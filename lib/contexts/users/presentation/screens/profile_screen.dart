@@ -214,6 +214,7 @@ class _ProfileSummaryCard extends StatelessWidget {
                     width: 58,
                     height: 58,
                     fit: BoxFit.cover,
+                    semanticLabel: 'Foto de perfil de ${profile.name}',
                   )
                       : Container(
                     width: 58,

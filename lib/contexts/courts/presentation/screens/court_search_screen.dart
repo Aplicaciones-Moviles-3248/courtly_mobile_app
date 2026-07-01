@@ -547,6 +547,7 @@ class _CourtCard extends StatelessWidget {
                   height: 96,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  semanticLabel: 'Foto de la cancha ${court.name}',
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       height: 96,
