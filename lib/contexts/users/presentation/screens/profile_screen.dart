@@ -268,7 +268,7 @@ class _ProfileDataBox extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white54,
+              color: Colors.white70,
               fontSize: 10,
               fontWeight: FontWeight.w800,
               letterSpacing: 1,

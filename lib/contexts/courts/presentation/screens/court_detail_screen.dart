@@ -253,7 +253,7 @@ class _ReviewCard extends StatelessWidget {
             child: const Text(
               '★★★★★',
               style: TextStyle(
-                color: AppColors.warning,
+                color: Color(0xFFE0A800),
                 fontSize: 13,
               ),
             ),
