@@ -146,7 +146,15 @@ class _CourtDetailScreenState extends State<CourtDetailScreen> {
                         const _ReviewCard(),
                         const SizedBox(height: 24),
                         ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Reservas próximamente disponibles',
+                                ),
+                              ),
+                            );
+                          },
                           child: const Text('Reservar esta cancha'),
                         ),
                       ],
