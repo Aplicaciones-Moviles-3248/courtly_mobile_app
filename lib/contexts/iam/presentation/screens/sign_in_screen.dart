@@ -53,9 +53,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
     signInUseCase = SignInUseCase(repository);
     signUpUseCase = SignUpUseCase(repository);
-
-    loginEmailController.text = 'fabricio';
-    loginPasswordController.text = '123456';
   }
 
   Future<void> signIn() async {

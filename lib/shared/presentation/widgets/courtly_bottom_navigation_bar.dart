@@ -112,7 +112,7 @@ class _BottomItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.primary : Colors.white54;
+    final color = isSelected ? AppColors.primary : Colors.white70;
 
     return GestureDetector(
       onTap: onTap,

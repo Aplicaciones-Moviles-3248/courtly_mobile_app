@@ -36,6 +36,7 @@ class _CourtDetailScreenState extends State<CourtDetailScreen> {
     final courtId = ModalRoute.of(context)?.settings.arguments as String? ?? '1';
 
     return Scaffold(
+      appBar: AppBar(title: const Text('Detalle')),
       bottomNavigationBar: const CourtlyBottomNavigationBar(currentIndex: 1),
       body: SafeArea(
         child: FutureBuilder<Court>(
@@ -145,7 +146,15 @@ class _CourtDetailScreenState extends State<CourtDetailScreen> {
                         const _ReviewCard(),
                         const SizedBox(height: 24),
                         ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Reservas próximamente disponibles',
+                                ),
+                              ),
+                            );
+                          },
                           child: const Text('Reservar esta cancha'),
                         ),
                       ],
@@ -218,10 +227,10 @@ class _ReviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Sofia Ramirez',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -229,8 +238,8 @@ class _ReviewCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 2),
-          Text(
+          const SizedBox(height: 2),
+          const Text(
             'Jugador',
             style: TextStyle(
               color: AppColors.primaryDark,
@@ -238,16 +247,19 @@ class _ReviewCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            '★★★★★',
-            style: TextStyle(
-              color: AppColors.warning,
-              fontSize: 13,
+          const SizedBox(height: 8),
+          Semantics(
+            label: 'Calificación 5 de 5 estrellas',
+            child: const Text(
+              '★★★★★',
+              style: TextStyle(
+                color: Color(0xFFE0A800),
+                fontSize: 13,
+              ),
             ),
           ),
-          SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 8),
+          const Text(
             'Buen mantenimiento y acceso rapido.',
             style: TextStyle(
               color: AppColors.textSecondary,

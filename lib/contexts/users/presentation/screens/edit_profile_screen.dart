@@ -129,6 +129,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        appBar: AppBar(title: const Text('Editar perfil')),
         bottomNavigationBar: const CourtlyBottomNavigationBar(currentIndex: 4),
         body: SafeArea(
             child: isLoading

@@ -214,6 +214,7 @@ class _ProfileSummaryCard extends StatelessWidget {
                     width: 58,
                     height: 58,
                     fit: BoxFit.cover,
+                    semanticLabel: 'Foto de perfil de ${profile.name}',
                   )
                       : Container(
                     width: 58,
@@ -267,7 +268,7 @@ class _ProfileDataBox extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white54,
+              color: Colors.white70,
               fontSize: 10,
               fontWeight: FontWeight.w800,
               letterSpacing: 1,
