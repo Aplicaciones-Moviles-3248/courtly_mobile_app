@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
@@ -43,12 +44,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
   String? errorMessage;
 
   // Contact list for invitation
-  final List<Map<String, dynamic>> _contacts = [
-    {'id': '101', 'name': 'Fabricio', 'selected': false},
-    {'id': '102', 'name': 'Eduardo', 'selected': false},
-    {'id': '103', 'name': 'Pedro', 'selected': false},
-    {'id': '104', 'name': 'Camilla', 'selected': false},
-  ];
+  List<Map<String, dynamic>> _contacts = [];
 
   @override
   void initState() {
@@ -81,10 +77,21 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     super.dispose();
   }
 
+  Future<void> _loadFriends() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('my_friends') ?? ['Fabricio', 'Eduardo', 'Camilla', 'Pedro'];
+    _contacts = list.map((name) => {
+      'id': name.hashCode.toString(),
+      'name': name,
+      'selected': false
+    }).toList();
+  }
+
   Future<void> _loadData() async {
     try {
       final user = await getMyUserProfileUseCase.execute();
       final loadedCourts = await getCourtsUseCase.execute();
+      await _loadFriends();
 
       setState(() {
         currentUser = user;

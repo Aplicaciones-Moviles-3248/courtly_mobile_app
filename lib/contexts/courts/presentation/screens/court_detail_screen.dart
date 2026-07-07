@@ -402,6 +402,7 @@ class _CourtDetailScreenState extends State<CourtDetailScreen> {
     courtId = ModalRoute.of(context)?.settings.arguments as String? ?? '1';
 
     return Scaffold(
+      appBar: AppBar(title: const Text('Detalle')),
       bottomNavigationBar: const CourtlyBottomNavigationBar(currentIndex: 1),
       body: SafeArea(
         child: FutureBuilder<Court>(

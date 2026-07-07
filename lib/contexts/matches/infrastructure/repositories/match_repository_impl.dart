@@ -1,4 +1,5 @@
 import '../../domain/entities/match.dart';
+import '../../domain/entities/match_join_request.dart';
 import '../../domain/repositories/match_repository.dart';
 import '../datasources/match_remote_data_source.dart';
 
@@ -34,5 +35,27 @@ class MatchRepositoryImpl implements MatchRepository {
   @override
   Future<Match> joinMatch(String matchId) {
     return remoteDataSource.joinMatch(matchId);
+  }
+
+  @override
+  Future<MatchJoinRequest> createJoinRequest(String matchId) {
+    return remoteDataSource.createJoinRequest(matchId);
+  }
+
+  @override
+  Future<List<MatchJoinRequest>> getJoinRequestsForMatch(String matchId) {
+    return remoteDataSource
+        .getJoinRequestsForMatch(matchId)
+        .then((list) => list.cast<MatchJoinRequest>());
+  }
+
+  @override
+  Future<MatchJoinRequest> getJoinRequest(String matchId, String requestId) {
+    return remoteDataSource.getJoinRequest(matchId, requestId);
+  }
+
+  @override
+  Future<MatchJoinRequest> approveJoinRequest(String matchId, String requestId) {
+    return remoteDataSource.approveJoinRequest(matchId, requestId);
   }
 }
