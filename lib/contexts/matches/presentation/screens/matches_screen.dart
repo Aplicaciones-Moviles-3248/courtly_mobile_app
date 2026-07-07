@@ -300,8 +300,8 @@ class _MatchesScreenState extends State<MatchesScreen> with SingleTickerProvider
                   ),
                 ),
             ],
-          );
-        };
+          ),
+        );
       },
     );
   }
