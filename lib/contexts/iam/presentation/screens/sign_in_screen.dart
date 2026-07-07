@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_spacing.dart';
+import '../../../../app/theme/app_shadows.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
 import '../../../../shared/infrastructure/http/api_exception.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
@@ -163,7 +165,10 @@ class _SignInScreenState extends State<SignInScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 430),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xl,
+              ),
               child: Column(
                 children: [
                   Container(
@@ -173,13 +178,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                      boxShadow: AppShadows.shadowMd,
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -189,7 +188,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  AppSpacing.gapMd,
                   const Text(
                     'MOCKUP ALINEADO AL BACKEND ACTUAL',
                     textAlign: TextAlign.center,
@@ -200,7 +199,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       letterSpacing: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  AppSpacing.gapSm,
                   const Text(
                     'Courtly para\njugadores y\nentrenadores',
                     textAlign: TextAlign.center,
@@ -211,7 +210,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  AppSpacing.gapLg,
                   _AuthTabs(
                     isLoginSelected: isLoginSelected,
                     onLoginTap: () {
@@ -229,7 +228,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       });
                     },
                   ),
-                  const SizedBox(height: 18),
+                  AppSpacing.gapMd,
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
                     child: isLoginSelected
@@ -253,20 +252,20 @@ class _SignInScreenState extends State<SignInScreen> {
                     ),
                   ),
                   if (successMessage != null) ...[
-                    const SizedBox(height: 14),
+                    AppSpacing.gapMd,
                     _MessageBox(
                       message: successMessage!,
                       isSuccess: true,
                     ),
                   ],
                   if (errorMessage != null) ...[
-                    const SizedBox(height: 14),
+                    AppSpacing.gapMd,
                     _MessageBox(
                       message: errorMessage!,
                       isSuccess: false,
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  AppSpacing.gapMd,
                   const Text(
                     'Demo: usa Swagger para crear jugadores, entrenadores o administradores según los roles reales del backend.',
                     textAlign: TextAlign.center,
@@ -301,7 +300,7 @@ class _AuthTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 44,
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpacing.xs),
       decoration: BoxDecoration(
         color: const Color(0xFFF4F8FB),
         borderRadius: BorderRadius.circular(14),
@@ -349,15 +348,7 @@ class _TabButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(11),
-          boxShadow: isSelected
-              ? [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ]
-              : [],
+          boxShadow: isSelected ? AppShadows.shadowSm : [],
         ),
         child: Text(
           label,
@@ -404,7 +395,7 @@ class _LoginForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           _AuthTextField(
             label: 'Contraseña',
             controller: passwordController,
@@ -416,7 +407,7 @@ class _LoginForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 18),
+          AppSpacing.gapLg,
           ElevatedButton(
             onPressed: isLoading ? null : onSubmit,
             child: isLoading
@@ -469,7 +460,7 @@ class _RegisterForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           _AuthTextField(
             label: 'Correo',
             controller: emailController,
@@ -482,7 +473,7 @@ class _RegisterForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           _AuthTextField(
             label: 'Teléfono',
             controller: phoneController,
@@ -497,7 +488,7 @@ class _RegisterForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           _AuthTextField(
             label: 'Contraseña',
             controller: passwordController,
@@ -509,9 +500,9 @@ class _RegisterForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           const _AccountTypeBox(),
-          const SizedBox(height: 18),
+          AppSpacing.gapLg,
           ElevatedButton(
             onPressed: isLoading ? null : onSubmit,
             child: isLoading
@@ -556,32 +547,14 @@ class _AuthTextField extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 6),
+        AppSpacing.gapXs,
         TextFormField(
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFFF4F8FB),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.primary),
-            ),
-          ),
+          style: const TextStyle(color: AppColors.textPrimary),
+          decoration: const InputDecoration(), // Inherits from global Theme inputDecorationTheme
         ),
       ],
     );
@@ -604,10 +577,10 @@ class _AccountTypeBox extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 6),
+        AppSpacing.gapXs,
         Container(
           height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           decoration: BoxDecoration(
             color: const Color(0xFFF4F8FB),
             borderRadius: BorderRadius.circular(16),
@@ -650,7 +623,7 @@ class _MessageBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isSuccess ? const Color(0xFFE7FFF5) : const Color(0xFFFFECEC),
         borderRadius: BorderRadius.circular(14),
