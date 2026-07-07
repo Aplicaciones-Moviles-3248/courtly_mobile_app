@@ -32,6 +32,7 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
   String selectedSport = 'Todos';
   String selectedPrice = 'Todos';
   String selectedSchedule = 'Todos';
+  bool isFilterExpanded = false;
 
   @override
   void initState() {
@@ -160,7 +161,7 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                     children: [
                       const Expanded(
                         child: Text(
-                          'BÚSQUEDA DE CANCHAS',
+                           'BÚSQUEDA DE CANCHAS',
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -199,35 +200,92 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                     ),
                   ),
                   AppSpacing.gapMd,
-                  _FilterCard(
-                    selectedLocation: selectedLocation,
-                    selectedSport: selectedSport,
-                    selectedPrice: selectedPrice,
-                    selectedSchedule: selectedSchedule,
-                    locationOptions: locationOptions,
-                    sportOptions: sportOptions,
-                    onLocationChanged: (value) {
-                      setState(() {
-                        selectedLocation = value;
-                      });
-                    },
-                    onSportChanged: (value) {
-                      setState(() {
-                        selectedSport = value;
-                      });
-                    },
-                    onPriceChanged: (value) {
-                      setState(() {
-                        selectedPrice = value;
-                      });
-                    },
-                    onScheduleChanged: (value) {
-                      setState(() {
-                        selectedSchedule = value;
-                      });
-                    },
-                    onApplyFilters: applyFilters,
-                    onClearFilters: clearFilters,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          readOnly: true,
+                          onTap: () {
+                            setState(() {
+                              isFilterExpanded = !isFilterExpanded;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Filtrar por ubicación, deporte...',
+                            prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary, size: 20),
+                            suffixIcon: Icon(
+                              isFilterExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.textSecondary,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            isFilterExpanded = !isFilterExpanded;
+                          });
+                        },
+                        icon: Icon(
+                          Icons.filter_list_rounded,
+                          color: isFilterExpanded ? AppColors.primary : AppColors.textPrimary,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: isFilterExpanded ? AppColors.primary.withValues(alpha: 0.1) : const Color(0xFFF4F8FB),
+                          padding: const EdgeInsets.all(12),
+                        ),
+                      ),
+                    ],
+                  ),
+                  AnimatedCrossFade(
+                    firstChild: const SizedBox.shrink(),
+                    secondChild: Padding(
+                      padding: const EdgeInsets.only(top: 12.0),
+                      child: _FilterCard(
+                        selectedLocation: selectedLocation,
+                        selectedSport: selectedSport,
+                        selectedPrice: selectedPrice,
+                        selectedSchedule: selectedSchedule,
+                        locationOptions: locationOptions,
+                        sportOptions: sportOptions,
+                        onLocationChanged: (value) {
+                          setState(() {
+                            selectedLocation = value;
+                          });
+                        },
+                        onSportChanged: (value) {
+                          setState(() {
+                            selectedSport = value;
+                          });
+                        },
+                        onPriceChanged: (value) {
+                          setState(() {
+                            selectedPrice = value;
+                          });
+                        },
+                        onScheduleChanged: (value) {
+                          setState(() {
+                            selectedSchedule = value;
+                          });
+                        },
+                        onApplyFilters: () {
+                          applyFilters();
+                          setState(() {
+                            isFilterExpanded = false;
+                          });
+                        },
+                        onClearFilters: () {
+                          clearFilters();
+                          setState(() {
+                            isFilterExpanded = false;
+                          });
+                        },
+                      ),
+                    ),
+                    crossFadeState: isFilterExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                    duration: const Duration(milliseconds: 250),
                   ),
                   AppSpacing.gapMd,
                   _ResultSummary(
@@ -529,6 +587,24 @@ class _CourtCard extends StatelessWidget {
                   height: 96,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 96,
+                      width: double.infinity,
+                      color: const Color(0xFFE2E8F0),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       height: 96,

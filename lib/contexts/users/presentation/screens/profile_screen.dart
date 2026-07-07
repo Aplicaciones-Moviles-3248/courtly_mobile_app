@@ -131,7 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onEditProfile: goToEditProfile,
                   ),
                   const SizedBox(height: 18),
-                  const _RecentActivityCard(),
+                  const _StatsCard(),
                   const SizedBox(height: 18),
                   _SessionCard(onLogout: logout),
                 ],
@@ -342,8 +342,8 @@ class _ActionCard extends StatelessWidget {
   }
 }
 
-class _RecentActivityCard extends StatelessWidget {
-  const _RecentActivityCard();
+class _StatsCard extends StatelessWidget {
+  const _StatsCard();
 
   @override
   Widget build(BuildContext context) {
@@ -354,31 +354,70 @@ class _RecentActivityCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Actividad reciente',
+          const Text(
+            'Mis Estadísticas',
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 14),
-          _InfoItem(
-            title: 'Persistencia del perfil',
-            description: 'El backend guarda el perfil personal del usuario autenticado.',
-          ),
-          SizedBox(height: 10),
-          _InfoItem(
-            title: 'Imagen de perfil',
-            description: 'La URL de imagen forma parte del flujo actual del backend.',
-          ),
-          SizedBox(height: 10),
-          _InfoItem(
-            title: 'Modelo del backend',
-            description: 'La edición usa name, email, phone e imageUrl del contexto Users.',
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Expanded(
+                child: _StatItem(
+                  icon: Icons.sports_tennis,
+                  value: '12',
+                  label: 'Partidos',
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: _StatItem(
+                  icon: Icons.calendar_month,
+                  value: '4',
+                  label: 'Reservas',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F8FB),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.emoji_events, color: AppColors.primary, size: 24),
+                      SizedBox(height: 8),
+                      Text(
+                        'Amateur',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Nivel',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -386,41 +425,45 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-class _InfoItem extends StatelessWidget {
-  final String title;
-  final String description;
+class _StatItem extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
 
-  const _InfoItem({
-    required this.title,
-    required this.description,
+  const _StatItem({
+    required this.icon,
+    required this.value,
+    required this.label,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF4F8FB),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, color: AppColors.primary, size: 24),
+          const SizedBox(height: 8),
           Text(
-            title,
+            value,
             style: const TextStyle(
               color: AppColors.textPrimary,
+              fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
-            description,
+            label,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 13,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

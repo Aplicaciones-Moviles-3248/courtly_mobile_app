@@ -190,7 +190,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                   AppSpacing.gapMd,
                   const Text(
-                    'MOCKUP ALINEADO AL BACKEND ACTUAL',
+                    'ACCESO PARA JUGADORES',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.textSecondary,
@@ -388,6 +388,7 @@ class _LoginForm extends StatelessWidget {
           _AuthTextField(
             label: 'Correo',
             controller: emailController,
+            hintText: 'Ej. fabricio',
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Ingresa tu correo o usuario.';
@@ -399,6 +400,7 @@ class _LoginForm extends StatelessWidget {
           _AuthTextField(
             label: 'Contraseña',
             controller: passwordController,
+            hintText: 'Ingresa tu contraseña',
             obscureText: true,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -453,6 +455,7 @@ class _RegisterForm extends StatelessWidget {
           _AuthTextField(
             label: 'Nombre completo',
             controller: fullNameController,
+            hintText: 'Ej. Fabricio Pinedo',
             validator: (value) {
               if (value == null || value.trim().length < 3) {
                 return 'Ingresa un nombre válido.';
@@ -464,6 +467,7 @@ class _RegisterForm extends StatelessWidget {
           _AuthTextField(
             label: 'Correo',
             controller: emailController,
+            hintText: 'Ej. fabricio@gmail.com',
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               final text = value?.trim() ?? '';
@@ -477,6 +481,7 @@ class _RegisterForm extends StatelessWidget {
           _AuthTextField(
             label: 'Teléfono',
             controller: phoneController,
+            hintText: 'Ej. 987654321',
             keyboardType: TextInputType.phone,
             validator: (value) {
               final text = value?.trim() ?? '';
@@ -492,6 +497,7 @@ class _RegisterForm extends StatelessWidget {
           _AuthTextField(
             label: 'Contraseña',
             controller: passwordController,
+            hintText: 'Mínimo 6 caracteres',
             obscureText: true,
             validator: (value) {
               if (value == null || value.trim().length < 6) {
@@ -521,6 +527,7 @@ class _RegisterForm extends StatelessWidget {
 
 class _AuthTextField extends StatelessWidget {
   final String label;
+  final String? hintText;
   final TextEditingController controller;
   final bool obscureText;
   final TextInputType? keyboardType;
@@ -528,6 +535,7 @@ class _AuthTextField extends StatelessWidget {
 
   const _AuthTextField({
     required this.label,
+    this.hintText,
     required this.controller,
     required this.validator,
     this.obscureText = false,
@@ -554,7 +562,9 @@ class _AuthTextField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           style: const TextStyle(color: AppColors.textPrimary),
-          decoration: const InputDecoration(), // Inherits from global Theme inputDecorationTheme
+          decoration: InputDecoration(
+            hintText: hintText,
+          ), // Inherits from global Theme inputDecorationTheme
         ),
       ],
     );
