@@ -17,7 +17,7 @@ import '../widgets/notification_card.dart';
 import '../widgets/notification_badge.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  /// Permite inyectar un repositorio para pruebas; si es null se construye el real.
+
   final NotificationRepository? repository;
 
   const NotificationsScreen({super.key, this.repository});
@@ -78,7 +78,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       setState(() {
         isLoading = false;
         errorMessage =
-        'No se pudieron cargar las notificaciones.\nVerifica tu conexión o que el backend esté disponible.';
+        'No se pudieron cargar las notificaciones.\nVerifique su conexión.';
       });
     }
   }
@@ -91,7 +91,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         unreadCount = cnt.unreadCount;
       });
     } catch (_) {
-      // silencioso: no bloquear la pantalla por fallos de contador
     }
   }
 
@@ -100,7 +99,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await markAsReadUseCase.execute(item.id);
     } catch (_) {
-      // si falla, permitimos que UI actualice localmente sólo si queremos
     } finally {
       if (!mounted) return;
       setState(() {
@@ -126,7 +124,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         const SnackBar(content: Text('Notificación eliminada')),
       );
     } catch (_) {
-      // revertir en caso de error
       if (!mounted) return;
       setState(() {
         final list = notifications.toList();
@@ -144,28 +141,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _onTapNotification(NotificationEntity item) async {
     await _markAsRead(item);
 
-    // Navegación basada en relatedEntityType si está disponible.
     final relatedType = item.relatedEntityType?.toLowerCase();
     final relatedId = item.relatedEntityId;
     if (relatedType == null || relatedId == null) {
-      // No hay entidad relacionada: nada más que marcar como leída.
       return;
     }
 
-    // Ejemplos: si el backend devuelve 'court' o 'COURT' navegamos al detalle de cancha.
     if (relatedType == 'court' || relatedType == 'cancha') {
       Navigator.pushNamed(context, AppRoutes.courtDetail,
           arguments: relatedId);
       return;
     }
 
-    // Si la entidad es booking, mandamos al listado de mis reservas (puedes adaptar).
     if (relatedType == 'booking' || relatedType == 'reserva') {
       Navigator.pushNamed(context, AppRoutes.myBookings);
       return;
     }
-
-    // Para otros tipos no manejados por ahora solo marcamos y no navegamos.
   }
 
   @override
@@ -203,11 +194,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           ),
                         ),
                       ),
-                      // Badge (no hace nada al presionar en esta pantalla)
                       NotificationBadge(
                         unreadCount: unreadCount,
                         onPressed: () async {
-                          // al presionar actualizamos contador y lista
                           await _loadUnreadCount();
                         },
                       ),
@@ -232,7 +221,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Contenido principal
                   Expanded(
                     child: _buildBody(),
                   ),

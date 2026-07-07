@@ -8,6 +8,10 @@ enum NotificationType {
   trainingSessionCancelled,
   paymentConfirmed,
   reviewEnabled,
+  matchCreated,
+  matchJoined,
+  matchParticipantJoined,
+  matchCancelled
 }
 
 extension NotificationTypeMapper on NotificationType {
@@ -39,6 +43,18 @@ extension NotificationTypeMapper on NotificationType {
 
       case 'REVIEW_ENABLED':
         return NotificationType.reviewEnabled;
+
+      case 'MATCH_CREATED':
+        return NotificationType.matchCreated;
+
+      case 'MATCH_JOINED':
+        return NotificationType.matchJoined;
+
+      case 'MATCH_PARTICIPANT_JOINED':
+        return NotificationType.matchParticipantJoined;
+
+      case 'MATCH_CANCELLED':
+        return NotificationType.matchCancelled;
 
       default:
         throw Exception('Unknown notification type: $value');
@@ -73,6 +89,18 @@ extension NotificationTypeMapper on NotificationType {
 
       case NotificationType.reviewEnabled:
         return 'REVIEW_ENABLED';
+
+      case NotificationType.matchCreated:
+        return 'MATCH_CREATED';
+
+      case NotificationType.matchJoined:
+        return 'MATCH_JOINED';
+
+      case NotificationType.matchParticipantJoined:
+        return 'MATCH_PARTICIPANT_JOINED';
+
+      case NotificationType.matchCancelled:
+        return 'MATCH_CANCELLED';
     }
   }
 }
