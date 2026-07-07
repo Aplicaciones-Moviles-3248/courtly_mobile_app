@@ -15,6 +15,11 @@ import '../../domain/entities/match.dart';
 import '../../infrastructure/datasources/match_remote_data_source.dart';
 import '../../infrastructure/repositories/match_repository_impl.dart';
 
+/// MatchesScreen
+/// 
+/// Pantalla principal de partidos que implementa:
+/// - USM09: Crear partido con amigos
+/// - USM10: Unirse a un partido disponible
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key});
 
