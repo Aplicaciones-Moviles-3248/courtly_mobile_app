@@ -15,6 +15,7 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
   late final ApiClient apiClient;
   List<dynamic> _coaches = [];
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -26,6 +27,7 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
   Future<void> _loadCoaches() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
@@ -35,32 +37,14 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      // Fallback: return mock coaches list if backend is not running/failing
+      // No fabricamos coaches falsos: solicitar un entrenamiento a un coach
+      // inventado nunca llegaría al backend. Mostramos un estado de error real
+      // para que el usuario pueda reintentar.
       setState(() {
-        _coaches = [
-          {
-            'id': 1,
-            'name': 'Entrenador Fabricio Ruiz',
-            'expertise': 'Tenis Avanzado & Táctica',
-            'phone': '987654321',
-            'userId': 101,
-          },
-          {
-            'id': 2,
-            'name': 'Entrenadora Sofía Mendoza',
-            'expertise': 'Pádel Iniciación & Técnica',
-            'phone': '912345678',
-            'userId': 102,
-          },
-          {
-            'id': 3,
-            'name': 'Entrenador Carlos Bacca',
-            'expertise': 'Fútbol & Preparación Física',
-            'phone': '955443322',
-            'userId': 103,
-          }
-        ];
+        _coaches = [];
         _isLoading = false;
+        _errorMessage = 'No se pudo cargar la lista de coaches.\n'
+            'Verifica tu conexión e intenta de nuevo.';
       });
     }
   }
@@ -153,6 +137,10 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
                         final userJson = await apiClient.get('/user-profiles/me');
                         final playerId = userJson['id'];
 
+                        // TODO(coaches): courtId/availabilityId están fijos porque
+                        // aún no existe un endpoint de disponibilidad del coach.
+                        // Cuando exista, reemplazar por la disponibilidad real
+                        // seleccionada por el jugador.
                         final body = {
                           'playerId': playerId,
                           'coachId': coach['id'],
@@ -164,10 +152,12 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
                         };
 
                         await apiClient.post('/training-sessions', body);
-                        Navigator.pop(ctx, true);
+                        if (ctx.mounted) Navigator.pop(ctx, true);
                       } catch (e) {
-                        // Fallback: mock success even if backend endpoint throws access error or is missing
-                        Navigator.pop(ctx, true);
+                        // NO fingimos éxito: si la solicitud falla, el coach nunca
+                        // la recibiría. Cerramos indicando el fallo para mostrar el
+                        // error real al usuario.
+                        if (ctx.mounted) Navigator.pop(ctx, false);
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -184,6 +174,7 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
       },
     );
 
+    if (!mounted) return;
     if (requested == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -191,7 +182,55 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
           backgroundColor: AppColors.primary,
         ),
       );
+    } else if (requested == false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo enviar la solicitud. '
+              'Verifica tu conexión e intenta de nuevo.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, color: AppColors.textSecondary, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? 'Ocurrió un error.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _loadCoaches,
+              icon: const Icon(Icons.refresh_rounded, color: AppColors.darkNavy),
+              label: const Text('Reintentar', style: TextStyle(color: AppColors.darkNavy)),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Text(
+          'No hay entrenadores disponibles por ahora.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
+      ),
+    );
   }
 
   @override
@@ -234,7 +273,11 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
                   ),
                   const SizedBox(height: 18),
                   Expanded(
-                    child: ListView.builder(
+                    child: _errorMessage != null
+                        ? _buildErrorState()
+                        : _coaches.isEmpty
+                            ? _buildEmptyState()
+                            : ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 22),
                       itemCount: _coaches.length,
                       itemBuilder: (ctx, index) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
@@ -68,8 +67,19 @@ class _MatchesScreenState extends State<MatchesScreen> with SingleTickerProvider
 
   Future<void> _loadData() async {
     try {
-      final user = await getMyUserProfileUseCase.execute();
+      // Los partidos son públicos: se cargan primero para que la pantalla
+      // funcione aunque el usuario no tenga sesión o perfil creado.
       final matches = await getAllMatchesUseCase.execute();
+
+      // El perfil es "best-effort": si falla (sesión expirada o perfil aún no
+      // creado) igual mostramos los partidos disponibles, solo que no podremos
+      // resaltar los que ya se unió el usuario.
+      UserProfile? user;
+      try {
+        user = await getMyUserProfileUseCase.execute();
+      } catch (_) {
+        user = null;
+      }
 
       setState(() {
         currentUser = user;
@@ -112,9 +122,9 @@ class _MatchesScreenState extends State<MatchesScreen> with SingleTickerProvider
   }
 
   List<Match> get availableMatches {
-    if (currentUser == null) return [];
     return allMatches.where((m) {
-      final isAlreadyJoined = m.participants.any((p) => p.id == currentUser!.id);
+      final isAlreadyJoined = currentUser != null &&
+          m.participants.any((p) => p.id == currentUser!.id);
       return !isAlreadyJoined && (m.status == 'OPEN' || m.currentPlayers < m.maxPlayers);
     }).toList();
   }

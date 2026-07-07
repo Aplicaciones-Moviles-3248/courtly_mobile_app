@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
+import '../../../../shared/infrastructure/http/api_exception.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
 import '../../../../shared/presentation/widgets/courtly_bottom_navigation_bar.dart';
 import '../../application/use_cases/get_my_user_profile_use_case.dart';
@@ -47,6 +48,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         profile = loadedProfile;
         isLoading = false;
         errorMessage = null;
+      });
+    } on ApiException catch (error) {
+      setState(() {
+        isLoading = false;
+        if (error.statusCode == 404) {
+          // El usuario tiene sesión válida pero aún no ha creado su perfil.
+          errorMessage = 'Aún no has completado tu perfil. Completa tus datos '
+              'para continuar.';
+        } else if (error.statusCode == 401 || error.statusCode == 403) {
+          errorMessage = 'Tu sesión expiró. Inicia sesión nuevamente.';
+        } else {
+          errorMessage = 'No se pudo cargar el perfil. Verifica que el backend '
+              'esté disponible e intenta de nuevo.';
+        }
       });
     } catch (error) {
       setState(() {
