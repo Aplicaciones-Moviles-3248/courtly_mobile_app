@@ -239,53 +239,61 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                       ),
                     ],
                   ),
-                  AnimatedCrossFade(
-                    firstChild: const SizedBox.shrink(),
-                    secondChild: Padding(
-                      padding: const EdgeInsets.only(top: 12.0),
-                      child: _FilterCard(
-                        selectedLocation: selectedLocation,
-                        selectedSport: selectedSport,
-                        selectedPrice: selectedPrice,
-                        selectedSchedule: selectedSchedule,
-                        locationOptions: locationOptions,
-                        sportOptions: sportOptions,
-                        onLocationChanged: (value) {
-                          setState(() {
-                            selectedLocation = value;
-                          });
-                        },
-                        onSportChanged: (value) {
-                          setState(() {
-                            selectedSport = value;
-                          });
-                        },
-                        onPriceChanged: (value) {
-                          setState(() {
-                            selectedPrice = value;
-                          });
-                        },
-                        onScheduleChanged: (value) {
-                          setState(() {
-                            selectedSchedule = value;
-                          });
-                        },
-                        onApplyFilters: () {
-                          applyFilters();
-                          setState(() {
-                            isFilterExpanded = false;
-                          });
-                        },
-                        onClearFilters: () {
-                          clearFilters();
-                          setState(() {
-                            isFilterExpanded = false;
-                          });
-                        },
-                      ),
-                    ),
-                    crossFadeState: isFilterExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                    duration: const Duration(milliseconds: 250),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return SizeTransition(
+                        sizeFactor: animation,
+                        alignment: Alignment.topCenter,
+                        child: child,
+                      );
+                    },
+                    child: isFilterExpanded
+                        ? Padding(
+                            key: const ValueKey('filter_expanded'),
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: _FilterCard(
+                              selectedLocation: selectedLocation,
+                              selectedSport: selectedSport,
+                              selectedPrice: selectedPrice,
+                              selectedSchedule: selectedSchedule,
+                              locationOptions: locationOptions,
+                              sportOptions: sportOptions,
+                              onLocationChanged: (value) {
+                                setState(() {
+                                  selectedLocation = value;
+                                });
+                              },
+                              onSportChanged: (value) {
+                                setState(() {
+                                  selectedSport = value;
+                                });
+                              },
+                              onPriceChanged: (value) {
+                                setState(() {
+                                  selectedPrice = value;
+                                });
+                              },
+                              onScheduleChanged: (value) {
+                                setState(() {
+                                  selectedSchedule = value;
+                                });
+                              },
+                              onApplyFilters: () {
+                                applyFilters();
+                                setState(() {
+                                  isFilterExpanded = false;
+                                });
+                              },
+                              onClearFilters: () {
+                                clearFilters();
+                                setState(() {
+                                  isFilterExpanded = false;
+                                });
+                              },
+                            ),
+                          )
+                        : const SizedBox(key: ValueKey('filter_collapsed')),
                   ),
                   AppSpacing.gapMd,
                   _ResultSummary(
