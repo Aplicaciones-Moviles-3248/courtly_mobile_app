@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
 
 import '../storage/local_storage_service.dart';
 import 'api_exception.dart';
+
+import 'package:flutter/foundation.dart';
 
 class ApiClient {
   // Base URL del backend. Por defecto apunta al backend desplegado en Render.
@@ -37,6 +40,9 @@ class ApiClient {
 
   Future<Map<String, String>> _headers() async {
     final token = await localStorageService.getToken();
+
+    debugPrint('Token disponible: ${token != null && token.isNotEmpty}');
+    debugPrint('Token preview: ${token == null ? 'null' : token.substring(0, token.length > 12 ? 12 : token.length)}');
 
     return {
       'Content-Type': 'application/json',
