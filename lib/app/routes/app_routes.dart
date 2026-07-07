@@ -11,11 +11,14 @@ import '../../contexts/bookings/presentation/screens/my_bookings_screen.dart';
 import '../../contexts/matches/presentation/screens/matches_screen.dart';
 import '../../contexts/matches/presentation/screens/create_match_screen.dart';
 import '../../contexts/notifications/presentation/screens/notifications_screen.dart';
+import '../../contexts/users/presentation/screens/home_screen.dart';
+import '../../contexts/users/presentation/screens/coaches_list_screen.dart';
 
 class AppRoutes {
   static const String signIn = '/sign-in';
   static const String home = '/home';
   static const String courts = '/courts';
+  static const String coaches = '/coaches';
   static const String courtDetail = '/courts/detail';
   static const String matches = '/matches';
   static const String createMatch = '/matches/create';
@@ -29,8 +32,9 @@ class AppRoutes {
   static Map<String, WidgetBuilder> get routes {
     return {
       signIn: (context) => const SignInScreen(),
-      home: (context) => const CourtSearchScreen(),
+      home: (context) => const HomeScreen(),
       courts: (context) => const CourtSearchScreen(),
+      coaches: (context) => const CoachesListScreen(),
       matches: (context) => const MatchesScreen(),
       createMatch: (context) => const CreateMatchScreen(),
       payments: (context) => const PaymentsScreen(),

@@ -1,4 +1,5 @@
 import '../entities/match.dart';
+import '../entities/match_join_request.dart';
 
 abstract class MatchRepository {
   Future<Match> createMatch({
@@ -11,4 +12,8 @@ abstract class MatchRepository {
   });
   Future<List<Match>> getAllMatches();
   Future<Match> joinMatch(String matchId);
+  Future<MatchJoinRequest> createJoinRequest(String matchId);
+  Future<List<MatchJoinRequest>> getJoinRequestsForMatch(String matchId);
+  Future<MatchJoinRequest> getJoinRequest(String matchId, String requestId);
+  Future<MatchJoinRequest> approveJoinRequest(String matchId, String requestId);
 }

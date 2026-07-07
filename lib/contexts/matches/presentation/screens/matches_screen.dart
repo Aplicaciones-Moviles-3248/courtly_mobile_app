@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
@@ -68,8 +67,19 @@ class _MatchesScreenState extends State<MatchesScreen> with SingleTickerProvider
 
   Future<void> _loadData() async {
     try {
-      final user = await getMyUserProfileUseCase.execute();
+      // Los partidos son públicos: se cargan primero para que la pantalla
+      // funcione aunque el usuario no tenga sesión o perfil creado.
       final matches = await getAllMatchesUseCase.execute();
+
+      // El perfil es "best-effort": si falla (sesión expirada o perfil aún no
+      // creado) igual mostramos los partidos disponibles, solo que no podremos
+      // resaltar los que ya se unió el usuario.
+      UserProfile? user;
+      try {
+        user = await getMyUserProfileUseCase.execute();
+      } catch (_) {
+        user = null;
+      }
 
       setState(() {
         currentUser = user;
@@ -112,9 +122,9 @@ class _MatchesScreenState extends State<MatchesScreen> with SingleTickerProvider
   }
 
   List<Match> get availableMatches {
-    if (currentUser == null) return [];
     return allMatches.where((m) {
-      final isAlreadyJoined = m.participants.any((p) => p.id == currentUser!.id);
+      final isAlreadyJoined = currentUser != null &&
+          m.participants.any((p) => p.id == currentUser!.id);
       return !isAlreadyJoined && (m.status == 'OPEN' || m.currentPlayers < m.maxPlayers);
     }).toList();
   }
@@ -386,12 +396,23 @@ class _MatchesScreenState extends State<MatchesScreen> with SingleTickerProvider
                               matches: availableMatches,
                               onMatchTap: (m) => _showMatchDetails(m, false),
                               emptyMessage: 'No hay partidos disponibles en este momento.',
+                              actionLabel: 'Crear nuevo partido',
+                              onAction: () async {
+                                final created = await Navigator.pushNamed(context, '/matches/create');
+                                if (created == true) {
+                                  _loadData();
+                                }
+                              },
                               onRefresh: _loadData,
                             ),
                             _MatchesList(
                               matches: myMatches,
                               onMatchTap: (m) => _showMatchDetails(m, true),
                               emptyMessage: 'No te has unido a ningún partido aún.',
+                              actionLabel: 'Buscar partidos',
+                              onAction: () {
+                                _tabController.animateTo(0);
+                              },
                               onRefresh: _loadData,
                             ),
                           ],
@@ -408,12 +429,16 @@ class _MatchesList extends StatelessWidget {
   final List<Match> matches;
   final Function(Match) onMatchTap;
   final String emptyMessage;
+  final String actionLabel;
+  final VoidCallback onAction;
   final Future<void> Function() onRefresh;
 
   const _MatchesList({
     required this.matches,
     required this.onMatchTap,
     required this.emptyMessage,
+    required this.actionLabel,
+    required this.onAction,
     required this.onRefresh,
   });
 
@@ -431,12 +456,42 @@ class _MatchesList extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.sports_soccer_outlined, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.sports_tennis_rounded,
+                    size: 40,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Sin partidos activos',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   emptyMessage,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 16),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: onAction,
+                  child: Text(actionLabel),
                 ),
               ],
             ),

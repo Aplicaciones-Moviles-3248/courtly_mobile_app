@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LocalStorageService {
@@ -5,9 +6,12 @@ class LocalStorageService {
   static const String _userIdKey = 'auth_user_id';
   static const String _usernameKey = 'auth_username';
 
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
   Future<void> saveToken(String token) async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_tokenKey, token);
+    await _secureStorage.write(key: _tokenKey, value: token);
   }
 
   Future<void> saveSession({
@@ -18,12 +22,11 @@ class LocalStorageService {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setInt(_userIdKey, userId);
     await preferences.setString(_usernameKey, username);
-    await preferences.setString(_tokenKey, token);
+    await _secureStorage.write(key: _tokenKey, value: token);
   }
 
   Future<String?> getToken() async {
-    final preferences = await SharedPreferences.getInstance();
-    return preferences.getString(_tokenKey);
+    return _secureStorage.read(key: _tokenKey);
   }
 
   Future<int?> getUserId() async {
@@ -43,7 +46,7 @@ class LocalStorageService {
 
   Future<void> clearSession() async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_tokenKey);
+    await _secureStorage.delete(key: _tokenKey);
     await preferences.remove(_userIdKey);
     await preferences.remove(_usernameKey);
   }

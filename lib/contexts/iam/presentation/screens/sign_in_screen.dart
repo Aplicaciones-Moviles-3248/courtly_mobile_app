@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_spacing.dart';
+import '../../../../app/theme/app_shadows.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
 import '../../../../shared/infrastructure/http/api_exception.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
+import '../../../../shared/presentation/widgets/terms_and_conditions_dialog.dart';
 import '../../application/use_cases/sign_in_use_case.dart';
 import '../../application/use_cases/sign_up_use_case.dart';
 import '../../infrastructure/datasources/authentication_remote_data_source.dart';
@@ -35,6 +38,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool isLoginSelected = true;
   bool isLoading = false;
+  bool hasAcceptedTerms = false;
   String? successMessage;
   String? errorMessage;
 
@@ -53,9 +57,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
     signInUseCase = SignInUseCase(repository);
     signUpUseCase = SignUpUseCase(repository);
-
-    loginEmailController.text = 'fabricio';
-    loginPasswordController.text = '123456';
   }
 
   Future<void> signIn() async {
@@ -92,6 +93,15 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> signUpPlayer() async {
+    if (!hasAcceptedTerms) {
+      setState(() {
+        successMessage = null;
+        errorMessage =
+            'Debes aceptar los Términos y Condiciones para crear tu cuenta.';
+      });
+      return;
+    }
+
     if (!signUpFormKey.currentState!.validate()) return;
 
     setState(() {
@@ -105,25 +115,21 @@ class _SignInScreenState extends State<SignInScreen> {
     final password = registerPasswordController.text.trim();
     final phone = registerPhoneController.text.trim();
 
+    // TODO: Persist terms acceptance in backend if a dedicated field is added later.
     try {
-      final userId = await signUpUseCase.execute(
-        email,
-        password,
-        ['ROLE_USER'],
-      );
+      final userId = await signUpUseCase.execute(email, password, [
+        'ROLE_USER',
+      ]);
 
       await signInUseCase.execute(email, password);
 
-      await apiClient.post(
-        '/user-profiles',
-        {
-          'name': fullName,
-          'email': email,
-          'phone': phone,
-          'imageUrl': 'https://i.pravatar.cc/300?img=12',
-          'userId': userId,
-        },
-      );
+      await apiClient.post('/user-profiles', {
+        'name': fullName,
+        'email': email,
+        'phone': phone,
+        'imageUrl': 'https://i.pravatar.cc/300?img=12',
+        'userId': userId,
+      });
 
       if (!mounted) return;
 
@@ -135,12 +141,20 @@ class _SignInScreenState extends State<SignInScreen> {
             ? 'No se pudo conectar con el servidor. Puede estar iniciando, intenta de nuevo en unos segundos.'
             : 'No se pudo crear la cuenta. Revisa los datos o intenta con otro correo.';
       });
-    } catch (_) {
+    } catch (error) {
+      debugPrint('REGISTER ERROR: $error');
+
       setState(() {
         isLoading = false;
-        errorMessage = 'No se pudo crear la cuenta. Intenta de nuevo.';
+        errorMessage = error.toString();
       });
     }
+    //catch (_) {
+    //setState(() {
+    //isLoading = false;
+    //errorMessage = 'No se pudo crear la cuenta. Intenta de nuevo.';
+    //});
+    //}
   }
 
   @override
@@ -163,7 +177,10 @@ class _SignInScreenState extends State<SignInScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 430),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xl,
+              ),
               child: Column(
                 children: [
                   Container(
@@ -173,13 +190,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                      boxShadow: AppShadows.shadowMd,
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -189,9 +200,9 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  AppSpacing.gapMd,
                   const Text(
-                    'MOCKUP ALINEADO AL BACKEND ACTUAL',
+                    'ACCESO PARA JUGADORES',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.textSecondary,
@@ -200,7 +211,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       letterSpacing: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  AppSpacing.gapSm,
                   const Text(
                     'Courtly para\njugadores y\nentrenadores',
                     textAlign: TextAlign.center,
@@ -211,7 +222,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  AppSpacing.gapLg,
                   _AuthTabs(
                     isLoginSelected: isLoginSelected,
                     onLoginTap: () {
@@ -229,44 +240,64 @@ class _SignInScreenState extends State<SignInScreen> {
                       });
                     },
                   ),
-                  const SizedBox(height: 18),
+                  AppSpacing.gapMd,
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
                     child: isLoginSelected
                         ? _LoginForm(
-                      key: const ValueKey('login'),
-                      formKey: signInFormKey,
-                      emailController: loginEmailController,
-                      passwordController: loginPasswordController,
-                      isLoading: isLoading,
-                      onSubmit: signIn,
-                    )
+                            key: const ValueKey('login'),
+                            formKey: signInFormKey,
+                            emailController: loginEmailController,
+                            passwordController: loginPasswordController,
+                            isLoading: isLoading,
+                            onSubmit: signIn,
+                          )
                         : _RegisterForm(
-                      key: const ValueKey('register'),
-                      formKey: signUpFormKey,
-                      fullNameController: fullNameController,
-                      emailController: registerEmailController,
-                      passwordController: registerPasswordController,
-                      phoneController: registerPhoneController,
-                      isLoading: isLoading,
-                      onSubmit: signUpPlayer,
-                    ),
+                            key: const ValueKey('register'),
+                            formKey: signUpFormKey,
+                            fullNameController: fullNameController,
+                            emailController: registerEmailController,
+                            passwordController: registerPasswordController,
+                            phoneController: registerPhoneController,
+                            isLoading: isLoading,
+                            hasAcceptedTerms: hasAcceptedTerms,
+                            onTermsChanged: (value) {
+                              setState(() {
+                                hasAcceptedTerms = value;
+                                if (value) {
+                                  errorMessage = null;
+                                }
+                              });
+                            },
+                            onTermsTap: () async {
+                              final accepted =
+                                  await TermsAndConditionsDialog.show(context);
+
+                              if (!mounted || accepted != true) return;
+
+                              setState(() {
+                                hasAcceptedTerms = true;
+                                errorMessage = null;
+                              });
+                            },
+                            onSubmit: signUpPlayer,
+                          ),
                   ),
                   if (successMessage != null) ...[
-                    const SizedBox(height: 14),
+                    AppSpacing.gapMd,
                     _MessageBox(
                       message: successMessage!,
                       isSuccess: true,
                     ),
                   ],
                   if (errorMessage != null) ...[
-                    const SizedBox(height: 14),
+                    AppSpacing.gapMd,
                     _MessageBox(
                       message: errorMessage!,
                       isSuccess: false,
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  AppSpacing.gapMd,
                   const Text(
                     'Demo: usa Swagger para crear jugadores, entrenadores o administradores según los roles reales del backend.',
                     textAlign: TextAlign.center,
@@ -301,7 +332,7 @@ class _AuthTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 44,
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpacing.xs),
       decoration: BoxDecoration(
         color: const Color(0xFFF4F8FB),
         borderRadius: BorderRadius.circular(14),
@@ -349,15 +380,7 @@ class _TabButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(11),
-          boxShadow: isSelected
-              ? [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ]
-              : [],
+          boxShadow: isSelected ? AppShadows.shadowSm : [],
         ),
         child: Text(
           label,
@@ -397,6 +420,7 @@ class _LoginForm extends StatelessWidget {
           _AuthTextField(
             label: 'Correo',
             controller: emailController,
+            hintText: 'Ej. fabricio',
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Ingresa tu correo o usuario.';
@@ -404,10 +428,11 @@ class _LoginForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           _AuthTextField(
             label: 'Contraseña',
             controller: passwordController,
+            hintText: 'Ingresa tu contraseña',
             obscureText: true,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -416,15 +441,15 @@ class _LoginForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 18),
+          AppSpacing.gapLg,
           ElevatedButton(
             onPressed: isLoading ? null : onSubmit,
             child: isLoading
                 ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Iniciar sesión'),
           ),
         ],
@@ -440,6 +465,9 @@ class _RegisterForm extends StatelessWidget {
   final TextEditingController passwordController;
   final TextEditingController phoneController;
   final bool isLoading;
+  final bool hasAcceptedTerms;
+  final ValueChanged<bool> onTermsChanged;
+  final VoidCallback onTermsTap;
   final VoidCallback onSubmit;
 
   const _RegisterForm({
@@ -450,6 +478,9 @@ class _RegisterForm extends StatelessWidget {
     required this.passwordController,
     required this.phoneController,
     required this.isLoading,
+    required this.hasAcceptedTerms,
+    required this.onTermsChanged,
+    required this.onTermsTap,
     required this.onSubmit,
   });
 
@@ -462,6 +493,7 @@ class _RegisterForm extends StatelessWidget {
           _AuthTextField(
             label: 'Nombre completo',
             controller: fullNameController,
+            hintText: 'Ej. Fabricio Pinedo',
             validator: (value) {
               if (value == null || value.trim().length < 3) {
                 return 'Ingresa un nombre válido.';
@@ -469,10 +501,11 @@ class _RegisterForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           _AuthTextField(
             label: 'Correo',
             controller: emailController,
+            hintText: 'Ej. fabricio@gmail.com',
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               final text = value?.trim() ?? '';
@@ -482,10 +515,11 @@ class _RegisterForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           _AuthTextField(
             label: 'Teléfono',
             controller: phoneController,
+            hintText: 'Ej. 987654321',
             keyboardType: TextInputType.phone,
             validator: (value) {
               final text = value?.trim() ?? '';
@@ -497,10 +531,11 @@ class _RegisterForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           _AuthTextField(
             label: 'Contraseña',
             controller: passwordController,
+            hintText: 'Mínimo 6 caracteres',
             obscureText: true,
             validator: (value) {
               if (value == null || value.trim().length < 6) {
@@ -509,17 +544,23 @@ class _RegisterForm extends StatelessWidget {
               return null;
             },
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           const _AccountTypeBox(),
+          const SizedBox(height: 14),
+          _TermsAcceptanceCheckbox(
+            isAccepted: hasAcceptedTerms,
+            onChanged: onTermsChanged,
+            onTermsTap: onTermsTap,
+          ),
           const SizedBox(height: 18),
           ElevatedButton(
             onPressed: isLoading ? null : onSubmit,
             child: isLoading
                 ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Crear cuenta'),
           ),
         ],
@@ -528,8 +569,76 @@ class _RegisterForm extends StatelessWidget {
   }
 }
 
+class _TermsAcceptanceCheckbox extends StatelessWidget {
+  final bool isAccepted;
+  final ValueChanged<bool> onChanged;
+  final VoidCallback onTermsTap;
+
+  const _TermsAcceptanceCheckbox({
+    required this.isAccepted,
+    required this.onChanged,
+    required this.onTermsTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => onChanged(!isAccepted),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(2, 4, 10, 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Checkbox(
+              value: isAccepted,
+              activeColor: AppColors.primary,
+              onChanged: (value) => onChanged(value ?? false),
+            ),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.3,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  children: [
+                    const TextSpan(text: 'Acepto los '),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onTermsTap,
+                        child: const Text(
+                          'Términos y Condiciones',
+                          style: TextStyle(
+                            color: AppColors.primaryDark,
+                            fontSize: 13,
+                            height: 1.3,
+                            fontWeight: FontWeight.w800,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const TextSpan(text: ' de Courtly'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AuthTextField extends StatelessWidget {
   final String label;
+  final String? hintText;
   final TextEditingController controller;
   final bool obscureText;
   final TextInputType? keyboardType;
@@ -537,6 +646,7 @@ class _AuthTextField extends StatelessWidget {
 
   const _AuthTextField({
     required this.label,
+    this.hintText,
     required this.controller,
     required this.validator,
     this.obscureText = false,
@@ -556,32 +666,16 @@ class _AuthTextField extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 6),
+        AppSpacing.gapXs,
         TextFormField(
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
+          style: const TextStyle(color: AppColors.textPrimary),
           decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFFF4F8FB),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.primary),
-            ),
-          ),
+            hintText: hintText,
+          ), // Inherits from global Theme inputDecorationTheme
         ),
       ],
     );
@@ -604,10 +698,10 @@ class _AccountTypeBox extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 6),
+        AppSpacing.gapXs,
         Container(
           height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           decoration: BoxDecoration(
             color: const Color(0xFFF4F8FB),
             borderRadius: BorderRadius.circular(16),
@@ -641,16 +735,13 @@ class _MessageBox extends StatelessWidget {
   final String message;
   final bool isSuccess;
 
-  const _MessageBox({
-    required this.message,
-    required this.isSuccess,
-  });
+  const _MessageBox({required this.message, required this.isSuccess});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isSuccess ? const Color(0xFFE7FFF5) : const Color(0xFFFFECEC),
         borderRadius: BorderRadius.circular(14),
