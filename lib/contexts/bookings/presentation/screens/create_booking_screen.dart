@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
@@ -28,6 +29,10 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  List<String> _friends = [];
+  final List<String> _selectedFriends = [];
+  bool _splitPayment = false;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +47,16 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     final userDataSource = UserProfileRemoteDataSource(apiClient);
     final userRepository = UserProfileRepositoryImpl(userDataSource);
     getMyUserProfileUseCase = GetMyUserProfileUseCase(userRepository);
+
+    _loadFriends();
+  }
+
+  Future<void> _loadFriends() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('my_friends') ?? ['Fabricio', 'Eduardo', 'Camilla', 'Pedro'];
+    setState(() {
+      _friends = list;
+    });
   }
 
   bool get _rangeValid =>
@@ -410,7 +425,56 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             ),
 
             if (_canConfirm) ...[
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
+              const _Label('Invitar amigos a la reserva'),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: _friends.map((friend) {
+                    final isSelected = _selectedFriends.contains(friend);
+                    return CheckboxListTile(
+                      value: isSelected,
+                      title: Text(friend, style: const TextStyle(color: AppColors.textPrimary)),
+                      activeColor: AppColors.primary,
+                      checkColor: AppColors.darkNavy,
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedFriends.add(friend);
+                          } else {
+                            _selectedFriends.remove(friend);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _Label('Dividir pago equitativamente'),
+                  Switch(
+                    value: _splitPayment,
+                    activeThumbColor: AppColors.primary,
+                    activeTrackColor: AppColors.primary.withValues(alpha: 0.38),
+                    onChanged: (val) {
+                      setState(() {
+                        _splitPayment = val;
+                      });
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
               const _Label('Resumen'),
               const SizedBox(height: 10),
               Container(
@@ -431,13 +495,33 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                         label: 'Horario',
                         value: '${_hourLabel(_selectedStartHour!)} – ${_hourLabel(_selectedEndHour!)}'),
                     const SizedBox(height: 8),
+                    if (_selectedFriends.isNotEmpty) ...[
+                      _SummaryRow(
+                          label: 'Participantes',
+                          value: '${_selectedFriends.length + 1} personas (tú + ${_selectedFriends.join(", ")})'),
+                      const SizedBox(height: 8),
+                    ],
                     const Divider(color: AppColors.border),
                     const SizedBox(height: 8),
                     _SummaryRow(
-                      label: 'Total estimado',
+                      label: 'Total de la reserva',
                       value: 'S/ ${_totalPrice(pricePerHour).toStringAsFixed(0)}',
-                      isTotal: true,
+                      isTotal: !_splitPayment,
                     ),
+                    if (_splitPayment) ...[
+                      const SizedBox(height: 8),
+                      _SummaryRow(
+                        label: 'Tú pagas (1/${_selectedFriends.length + 1})',
+                        value: 'S/ ${(_totalPrice(pricePerHour) / (_selectedFriends.length + 1)).toStringAsFixed(2)}',
+                        isTotal: true,
+                      ),
+                      const SizedBox(height: 4),
+                      _SummaryRow(
+                        label: 'Cada amigo paga',
+                        value: 'S/ ${(_totalPrice(pricePerHour) / (_selectedFriends.length + 1)).toStringAsFixed(2)}',
+                        isTotal: false,
+                      ),
+                    ],
                   ],
                 ),
               ),

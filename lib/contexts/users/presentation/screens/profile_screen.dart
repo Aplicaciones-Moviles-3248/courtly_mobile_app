@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -132,6 +133,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 18),
                   const _StatsCard(),
+                  const SizedBox(height: 18),
+                  const _FriendsCard(),
                   const SizedBox(height: 18),
                   _SessionCard(onLogout: logout),
                 ],
@@ -553,6 +556,132 @@ class _ErrorView extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FriendsCard extends StatefulWidget {
+  const _FriendsCard();
+
+  @override
+  State<_FriendsCard> createState() => _FriendsCardState();
+}
+
+class _FriendsCardState extends State<_FriendsCard> {
+  List<String> _friends = [];
+  final _friendNameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFriends();
+  }
+
+  @override
+  void dispose() {
+    _friendNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFriends() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _friends = prefs.getStringList('my_friends') ?? ['Fabricio', 'Eduardo', 'Camilla', 'Pedro'];
+    });
+  }
+
+  Future<void> _addFriend() async {
+    final name = _friendNameController.text.trim();
+    if (name.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final updated = List<String>.from(_friends)..add(name);
+    await prefs.setStringList('my_friends', updated);
+    _friendNameController.clear();
+    _loadFriends();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Mis Amigos',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_friends.isEmpty)
+            const Text(
+              'Aún no has agregado amigos.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _friends.map((friend) {
+                return Chip(
+                  label: Text(friend),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                  labelStyle: const TextStyle(color: AppColors.darkNavy, fontWeight: FontWeight.bold),
+                  deleteIconColor: Colors.redAccent,
+                  onDeleted: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    final updated = List<String>.from(_friends)..remove(friend);
+                    await prefs.setStringList('my_friends', updated);
+                    _loadFriends();
+                  },
+                );
+              }).toList(),
+            ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _friendNameController,
+                  decoration: InputDecoration(
+                    hintText: 'Nombre del amigo',
+                    hintStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: const Color(0xFFF4F8FB),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _addFriend,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  minimumSize: const Size(80, 42),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Agregar'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
