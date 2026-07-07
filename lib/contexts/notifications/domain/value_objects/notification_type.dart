@@ -11,7 +11,8 @@ enum NotificationType {
   matchCreated,
   matchJoined,
   matchParticipantJoined,
-  matchCancelled
+  matchCancelled,
+  matchJoinApproved
 }
 
 extension NotificationTypeMapper on NotificationType {
@@ -56,8 +57,11 @@ extension NotificationTypeMapper on NotificationType {
       case 'MATCH_CANCELLED':
         return NotificationType.matchCancelled;
 
+      case 'MATCH_JOIN_APPROVED':
+        return NotificationType.matchJoinApproved;
+
       default:
-        throw Exception('Unknown notification type: $value');
+        return NotificationType.bookingCreated;
     }
   }
 
@@ -101,6 +105,9 @@ extension NotificationTypeMapper on NotificationType {
 
       case NotificationType.matchCancelled:
         return 'MATCH_CANCELLED';
+
+      case NotificationType.matchJoinApproved:
+        return 'MATCH_JOIN_APPROVED';
     }
   }
 }
