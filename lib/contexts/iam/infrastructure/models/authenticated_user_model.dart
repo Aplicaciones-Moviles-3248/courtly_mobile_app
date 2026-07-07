@@ -11,7 +11,7 @@ class AuthenticatedUserModel extends AuthenticatedUser {
     return AuthenticatedUserModel(
       id: json['id'] ?? 0,
       username: json['username'] ?? '',
-      token: json['token'] ?? '',
+      token: json['token'] ?? json['accessToken'] ?? json['jwt'] ?? '',
     );
   }
 }
