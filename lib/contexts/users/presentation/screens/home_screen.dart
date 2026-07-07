@@ -1,7 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../../app/theme/app_colors.dart';
+import '../../../../shared/infrastructure/http/api_client.dart';
+import '../../../../shared/infrastructure/storage/local_storage_service.dart';
 import '../../../../shared/presentation/widgets/courtly_bottom_navigation_bar.dart';
+import '../../../matches/application/use_cases/approve_match_join_request_use_case.dart';
+import '../../../matches/application/use_cases/create_match_join_request_use_case.dart';
+import '../../../matches/application/use_cases/get_all_matches_use_case.dart';
+import '../../../matches/application/use_cases/get_join_requests_for_match_use_case.dart';
+import '../../../matches/application/use_cases/get_match_join_request_use_case.dart';
+import '../../../matches/domain/entities/match.dart';
+import '../../../matches/domain/entities/match_join_request.dart';
+import '../../../matches/infrastructure/datasources/match_remote_data_source.dart';
+import '../../../matches/infrastructure/repositories/match_repository_impl.dart';
+import '../../../notifications/application/use_cases/get_my_notifications_use_case.dart';
+import '../../../notifications/domain/entities/app_notification.dart';
+import '../../../notifications/infrastructure/datasources/notification_remote_data_source.dart';
+import '../../../notifications/infrastructure/repositories/notification_repository_impl.dart';
+import '../../application/use_cases/get_my_user_profile_use_case.dart';
+import '../../domain/entities/user_profile.dart';
+import '../../infrastructure/datasources/user_profile_remote_data_source.dart';
+import '../../infrastructure/repositories/user_profile_repository_impl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,65 +32,118 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Map<String, dynamic>> _matches = [
-    {
-      'id': 1,
-      'creator': 'Fabricio',
-      'participants': ['Fabricio'],
-      'sport': 'Tenis',
-      'court': 'Cancha Principal - San Isidro',
-      'dateTime': 'Hoy, 18:00 - 19:00',
-      'spots': 4,
-      'joined': false,
-    },
-    {
-      'id': 2,
-      'creator': 'Eduardo',
-      'participants': ['Eduardo', 'Camilla'],
-      'sport': 'Fútbol',
-      'court': 'Complejo Depor3 - Surco',
-      'dateTime': 'Mañana, 20:00 - 21:00',
-      'spots': 10,
-      'joined': false,
-    }
-  ];
+  late final GetAllMatchesUseCase _getAllMatchesUseCase;
+  late final GetMyUserProfileUseCase _getMyUserProfileUseCase;
+  late final GetMyNotificationsUseCase _getMyNotificationsUseCase;
+  late final CreateMatchJoinRequestUseCase _createJoinRequestUseCase;
+  late final GetMatchJoinRequestUseCase _getJoinRequestUseCase;
+  late final GetJoinRequestsForMatchUseCase _getJoinRequestsForMatchUseCase;
+  late final ApproveMatchJoinRequestUseCase _approveJoinRequestUseCase;
 
-  List<String> _notifications = [
-    'Tu reserva en San Borja ha sido confirmada.',
-    'El entrenador Fabricio Ruiz aceptó tu solicitud de entrenamiento.',
-  ];
+  List<Match> _feedMatches = [];
+  List<AppNotification> _notifications = [];
+  Map<String, List<MatchJoinRequest>> _pendingApprovalsByMatchId = {};
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadState();
+
+    final localStorage = LocalStorageService();
+    final apiClient = ApiClient(localStorage);
+
+    final matchDataSource = MatchRemoteDataSource(apiClient);
+    final matchRepository = MatchRepositoryImpl(matchDataSource);
+    _getAllMatchesUseCase = GetAllMatchesUseCase(matchRepository);
+    _createJoinRequestUseCase = CreateMatchJoinRequestUseCase(matchRepository);
+    _getJoinRequestUseCase = GetMatchJoinRequestUseCase(matchRepository);
+    _getJoinRequestsForMatchUseCase = GetJoinRequestsForMatchUseCase(matchRepository);
+    _approveJoinRequestUseCase = ApproveMatchJoinRequestUseCase(matchRepository);
+
+    final userDataSource = UserProfileRemoteDataSource(apiClient);
+    final userRepository = UserProfileRepositoryImpl(userDataSource);
+    _getMyUserProfileUseCase = GetMyUserProfileUseCase(userRepository);
+
+    final notificationDataSource = NotificationRemoteDataSource(apiClient);
+    final notificationRepository = NotificationRepositoryImpl(notificationDataSource);
+    _getMyNotificationsUseCase = GetMyNotificationsUseCase(notificationRepository);
+
+    _loadData();
   }
 
-  Future<void> _loadState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final joinedIds = prefs.getStringList('joined_matches_ids') ?? [];
+  Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() {
-      for (var match in _matches) {
-        if (joinedIds.contains(match['id'].toString())) {
-          match['joined'] = true;
-          if (!match['participants'].contains('Tú')) {
-            match['participants'].add('Tú');
+      _isLoading = true;
+    });
+
+    try {
+      final matches = await _getAllMatchesUseCase.execute();
+
+      UserProfile? user;
+      try {
+        user = await _getMyUserProfileUseCase.execute();
+      } catch (_) {
+        user = null;
+      }
+
+      List<AppNotification> notifications = [];
+      try {
+        notifications = await _getMyNotificationsUseCase.execute();
+        notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      } catch (_) {
+        notifications = [];
+      }
+
+      var feedMatches = <Match>[];
+      var pendingApprovals = <String, List<MatchJoinRequest>>{};
+
+      if (user != null) {
+        final myId = user.id;
+        feedMatches = matches.where((match) {
+          final isOwnOrJoined = match.createdBy.id == myId ||
+              match.participants.any((participant) => participant.id == myId);
+          return !isOwnOrJoined && match.currentPlayers < match.maxPlayers;
+        }).toList();
+
+        final myMatches = matches
+            .where((match) => match.participants.any((participant) => participant.id == myId))
+            .toList();
+
+        for (final match in myMatches) {
+          try {
+            final requests = await _getJoinRequestsForMatchUseCase.execute(match.id);
+            final needsMyApproval = requests
+                .where((request) => request.isPending && !request.approvedByUserIds.contains(myId))
+                .toList();
+            if (needsMyApproval.isNotEmpty) {
+              pendingApprovals[match.id] = needsMyApproval;
+            }
+          } catch (_) {
+            // Best-effort: skip matches whose join requests couldn't be fetched.
           }
         }
       }
-    });
-  }
 
-  Future<void> _saveJoinedState(int matchId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final joinedIds = prefs.getStringList('joined_matches_ids') ?? [];
-    if (!joinedIds.contains(matchId.toString())) {
-      joinedIds.add(matchId.toString());
-      await prefs.setStringList('joined_matches_ids', joinedIds);
+      if (!mounted) return;
+      setState(() {
+        _feedMatches = feedMatches;
+        _notifications = notifications;
+        _pendingApprovalsByMatchId = pendingApprovals;
+        _isLoading = false;
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No se pudieron cargar los datos.\nVerifica que el backend esté disponible.';
+      });
     }
   }
 
-  void _showJoinRequestWorkflow(Map<String, dynamic> match) {
+  void _showJoinRequestWorkflow(Match match) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -79,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          '¿Deseas enviar una solicitud para unirte al partido de ${match['sport']} organizado por ${match['creator']}?',
+          '¿Deseas enviar una solicitud para unirte al partido de ${match.title} organizado por ${match.createdBy.name}?',
           style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
@@ -88,9 +162,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Cancelar', style: TextStyle(color: Colors.redAccent)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              _runConsensusWorkflowDialog(match);
+              await _createJoinRequestAndShowDialog(match);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -103,29 +177,57 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _runConsensusWorkflowDialog(Map<String, dynamic> match) {
-    final participants = List<String>.from(match['participants']);
-    
+  Future<void> _createJoinRequestAndShowDialog(Match match) async {
+    try {
+      final request = await _createJoinRequestUseCase.execute(match.id);
+      if (!mounted) return;
+      _runConsensusWorkflowDialog(match, request);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo enviar la solicitud: ${error.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _runConsensusWorkflowDialog(Match match, MatchJoinRequest initialRequest) {
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (ctx) {
         return _ConsensusDialogContent(
-          participants: participants,
-          creator: match['creator'],
-          onComplete: () async {
-            await _saveJoinedState(match['id']);
-            setState(() {
-              match['joined'] = true;
-              if (!match['participants'].contains('Tú')) {
-                match['participants'].add('Tú');
-              }
-              _notifications.insert(0, '¡Fuiste aceptado en el partido de ${match['sport']} de ${match['creator']}!');
-            });
-          },
+          matchId: match.id,
+          creatorName: match.createdBy.name,
+          initialRequest: initialRequest,
+          getJoinRequestUseCase: _getJoinRequestUseCase,
+          onApproved: _loadData,
         );
       },
     );
+  }
+
+  Future<void> _approveJoinRequest(String matchId, MatchJoinRequest request) async {
+    try {
+      await _approveJoinRequestUseCase.execute(matchId, request.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Aprobaste la solicitud de ${request.requesterName}.'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+      _loadData();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo aprobar la solicitud: ${error.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -134,93 +236,165 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.background,
       bottomNavigationBar: const CourtlyBottomNavigationBar(currentIndex: 0),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'FEED DE ACTIVIDADES',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.4,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Inicio',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 30,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 24),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? _ErrorView(message: _errorMessage!, onRetry: _loadData)
+                : RefreshIndicator(
+                    onRefresh: _loadData,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(22, 24, 22, 100),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'FEED DE ACTIVIDADES',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Inicio',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 30,
+                              height: 1,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
 
-              // Notifications header card
-              if (_notifications.isNotEmpty) ...[
-                const Text(
-                  'Notificaciones recientes',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    children: _notifications.map((notif) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.notifications_active_outlined, color: AppColors.primary, size: 18),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                notif,
-                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                          if (_notifications.isNotEmpty) ...[
+                            const Text(
+                              'Notificaciones recientes',
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Column(
+                                children: _notifications.take(5).map((notif) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.notifications_active_outlined, color: AppColors.primary, size: 18),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            notif.message,
+                                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
                               ),
                             ),
+                            const SizedBox(height: 24),
                           ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
 
-              // Friends matches feed
-              const Text(
-                'Partidos de mis amigos',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              for (final match in _matches) ...[
-                _FriendMatchCard(
-                  match: match,
-                  onJoin: () => _showJoinRequestWorkflow(match),
-                ),
-                const SizedBox(height: 14),
-              ],
-            ],
+                          if (_pendingApprovalsByMatchId.isNotEmpty) ...[
+                            const Text(
+                              'Solicitudes que esperan tu aprobación',
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 10),
+                            for (final entry in _pendingApprovalsByMatchId.entries) ...[
+                              for (final request in entry.value) ...[
+                                _PendingApprovalCard(
+                                  request: request,
+                                  onApprove: () => _approveJoinRequest(entry.key, request),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                            ],
+                            const SizedBox(height: 14),
+                          ],
+
+                          const Text(
+                            'Partidos de mis amigos',
+                            style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 10),
+                          if (_feedMatches.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                'No hay partidos disponibles por el momento.',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              ),
+                            ),
+                          for (final match in _feedMatches) ...[
+                            _FriendMatchCard(
+                              match: match,
+                              onJoin: () => _showJoinRequestWorkflow(match),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+      ),
+    );
+  }
+}
+
+class _PendingApprovalCard extends StatelessWidget {
+  final MatchJoinRequest request;
+  final VoidCallback onApprove;
+
+  const _PendingApprovalCard({required this.request, required this.onApprove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.how_to_reg, color: AppColors.primary, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '${request.requesterName} quiere unirse a tu partido (${request.approvalsCount}/${request.requiredApprovals} aprobaciones)',
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: onApprove,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Aprobar', style: TextStyle(color: AppColors.darkNavy, fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _FriendMatchCard extends StatelessWidget {
-  final Map<String, dynamic> match;
+  final Match match;
   final VoidCallback onJoin;
 
   const _FriendMatchCard({
@@ -230,7 +404,7 @@ class _FriendMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spotsLeft = match['spots'] - match['participants'].length;
+    final spotsLeft = match.maxPlayers - match.currentPlayers;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -246,7 +420,7 @@ class _FriendMatchCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                match['sport'].toUpperCase(),
+                match.courtName.toUpperCase(),
                 style: const TextStyle(
                   color: AppColors.primary,
                   fontSize: 11,
@@ -257,13 +431,13 @@ class _FriendMatchCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: match['joined'] ? const Color(0xFFE7FFF5) : const Color(0xFFFFF7E5),
+                  color: const Color(0xFFFFF7E5),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  match['joined'] ? 'UNIDO' : '$spotsLeft LUGARES',
-                  style: TextStyle(
-                    color: match['joined'] ? AppColors.primaryDark : const Color(0xFF9A6B00),
+                  '$spotsLeft LUGARES',
+                  style: const TextStyle(
+                    color: Color(0xFF9A6B00),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -273,7 +447,7 @@ class _FriendMatchCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Partido de ${match['creator']}',
+            'Partido de ${match.createdBy.name}',
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 18,
@@ -287,7 +461,7 @@ class _FriendMatchCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  match['court'],
+                  match.courtName,
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
               ),
@@ -299,52 +473,33 @@ class _FriendMatchCard extends StatelessWidget {
               const Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
               const SizedBox(width: 6),
               Text(
-                match['dateTime'],
+                '${match.dateTime.day}/${match.dateTime.month} a las ${match.dateTime.hour.toString().padLeft(2, '0')}:${match.dateTime.minute.toString().padLeft(2, '0')}',
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ],
           ),
           const SizedBox(height: 14),
           Text(
-            'Participantes: ${match['participants'].join(', ')}',
+            'Participantes: ${match.participants.map((p) => p.name).join(', ')}',
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 14),
-          if (!match['joined'])
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: ElevatedButton(
-                onPressed: onJoin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text(
-                  'Solicitar unirse',
-                  style: TextStyle(color: AppColors.darkNavy, fontWeight: FontWeight.bold),
-                ),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton(
+              onPressed: onJoin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-            )
-          else
-            const SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check_circle_outline, color: AppColors.primary, size: 18),
-                    SizedBox(width: 6),
-                    Text(
-                      'Ya formas parte de este partido',
-                      style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                  ],
-                ),
+              child: const Text(
+                'Solicitar unirse',
+                style: TextStyle(color: AppColors.darkNavy, fontWeight: FontWeight.bold),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -352,14 +507,18 @@ class _FriendMatchCard extends StatelessWidget {
 }
 
 class _ConsensusDialogContent extends StatefulWidget {
-  final List<String> participants;
-  final String creator;
-  final VoidCallback onComplete;
+  final String matchId;
+  final String creatorName;
+  final MatchJoinRequest initialRequest;
+  final GetMatchJoinRequestUseCase getJoinRequestUseCase;
+  final VoidCallback onApproved;
 
   const _ConsensusDialogContent({
-    required this.participants,
-    required this.creator,
-    required this.onComplete,
+    required this.matchId,
+    required this.creatorName,
+    required this.initialRequest,
+    required this.getJoinRequestUseCase,
+    required this.onApproved,
   });
 
   @override
@@ -367,46 +526,42 @@ class _ConsensusDialogContent extends StatefulWidget {
 }
 
 class _ConsensusDialogContentState extends State<_ConsensusDialogContent> {
-  int _step = 0;
-  bool _finished = false;
+  late MatchJoinRequest _request;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
-    _startWorkflow();
+    _request = widget.initialRequest;
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _poll());
   }
 
-  void _startWorkflow() async {
-    // Step 0: Request sent
-    await Future.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
-    setState(() { _step = 1; });
-
-    // Step 1: Creator approves
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (!mounted) return;
-    setState(() { _step = 2; });
-
-    // Step 2: Other participants approve if exists
-    if (widget.participants.length > 1) {
-      await Future.delayed(const Duration(milliseconds: 1500));
+  Future<void> _poll() async {
+    try {
+      final updated = await widget.getJoinRequestUseCase.execute(widget.matchId, _request.id);
       if (!mounted) return;
-      setState(() { _step = 3; });
-    } else {
-      setState(() { _step = 3; });
+      setState(() {
+        _request = updated;
+      });
+      if (updated.isApproved) {
+        _pollTimer?.cancel();
+        widget.onApproved();
+      }
+    } catch (_) {
+      // Transient network errors: keep polling, don't surface a dialog error.
     }
+  }
 
-    // Step 3: Consensus complete & added
-    await Future.delayed(const Duration(milliseconds: 1000));
-    if (!mounted) return;
-    setState(() {
-      _finished = true;
-    });
-    widget.onComplete();
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isApproved = _request.isApproved;
+
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       title: Row(
@@ -420,91 +575,92 @@ class _ConsensusDialogContentState extends State<_ConsensusDialogContent> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Todos los participantes del partido deben estar de acuerdo en incorporarte:',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+          Text(
+            isApproved
+                ? '¡Todos los participantes aprobaron tu solicitud!'
+                : 'Todos los participantes del partido deben aprobar tu solicitud. Puedes cerrar esta ventana: te avisaremos con una notificación.',
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 20),
-          _WorkflowStepRow(
-            label: 'Enviando solicitud de unirse...',
-            isActive: _step >= 0,
-            isComplete: _step > 0,
-          ),
-          _WorkflowStepRow(
-            label: 'Aprobación del creador (${widget.creator})',
-            isActive: _step >= 1,
-            isComplete: _step > 1,
-          ),
-          if (widget.participants.length > 1)
-            _WorkflowStepRow(
-              label: 'Consenso de participantes (${widget.participants.where((p) => p != widget.creator).join(", ")})',
-              isActive: _step >= 2,
-              isComplete: _step > 2,
-            ),
-          _WorkflowStepRow(
-            label: 'Notificando incorporación con éxito',
-            isActive: _step >= 3,
-            isComplete: _finished,
+          Row(
+            children: [
+              if (isApproved)
+                const Icon(Icons.check_circle, color: AppColors.primary, size: 20)
+              else
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.primary)),
+                ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '${_request.approvalsCount}/${_request.requiredApprovals} participantes han aprobado',
+                  style: TextStyle(
+                    color: isApproved ? AppColors.textPrimary : AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: isApproved ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
       actions: [
-        if (_finished)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Entendido', style: TextStyle(color: AppColors.darkNavy, fontWeight: FontWeight.bold)),
-            ),
-          ),
+        SizedBox(
+          width: double.infinity,
+          child: isApproved
+              ? ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Entendido', style: TextStyle(color: AppColors.darkNavy, fontWeight: FontWeight.bold)),
+                )
+              : TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cerrar', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+        ),
       ],
     );
   }
 }
 
-class _WorkflowStepRow extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final bool isComplete;
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
 
-  const _WorkflowStepRow({
-    required this.label,
-    required this.isActive,
-    required this.isComplete,
-  });
+  const _ErrorView({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    if (!isActive) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        children: [
-          if (isComplete)
-            const Icon(Icons.check_circle, color: AppColors.primary, size: 20)
-          else
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.primary)),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
             ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isComplete ? AppColors.textPrimary : AppColors.textSecondary,
-                fontSize: 13,
-                fontWeight: isComplete ? FontWeight.bold : FontWeight.normal,
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
+              child: const Text('Reintentar', style: TextStyle(color: AppColors.darkNavy)),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

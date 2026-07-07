@@ -1,5 +1,6 @@
 import '../../../../shared/infrastructure/http/api_client.dart';
 import '../models/match_model.dart';
+import '../models/match_join_request_model.dart';
 
 class MatchRemoteDataSource {
   final ApiClient apiClient;
@@ -35,5 +36,27 @@ class MatchRemoteDataSource {
   Future<MatchModel> joinMatch(String matchId) async {
     final json = await apiClient.post('/matches/$matchId/join', {});
     return MatchModel.fromJson(json);
+  }
+
+  Future<MatchJoinRequestModel> createJoinRequest(String matchId) async {
+    final json = await apiClient.post('/matches/$matchId/join-requests', {});
+    return MatchJoinRequestModel.fromJson(json);
+  }
+
+  Future<List<MatchJoinRequestModel>> getJoinRequestsForMatch(String matchId) async {
+    final list = await apiClient.getList('/matches/$matchId/join-requests');
+    return list
+        .map((e) => MatchJoinRequestModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<MatchJoinRequestModel> getJoinRequest(String matchId, String requestId) async {
+    final json = await apiClient.get('/matches/$matchId/join-requests/$requestId');
+    return MatchJoinRequestModel.fromJson(json);
+  }
+
+  Future<MatchJoinRequestModel> approveJoinRequest(String matchId, String requestId) async {
+    final json = await apiClient.post('/matches/$matchId/join-requests/$requestId/approve', {});
+    return MatchJoinRequestModel.fromJson(json);
   }
 }
