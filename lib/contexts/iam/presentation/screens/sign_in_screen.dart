@@ -5,6 +5,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
 import '../../../../shared/infrastructure/http/api_exception.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
+import '../../../../shared/presentation/widgets/terms_and_conditions_dialog.dart';
 import '../../application/use_cases/sign_in_use_case.dart';
 import '../../application/use_cases/sign_up_use_case.dart';
 import '../../infrastructure/datasources/authentication_remote_data_source.dart';
@@ -35,6 +36,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool isLoginSelected = true;
   bool isLoading = false;
+  bool hasAcceptedTerms = false;
   String? successMessage;
   String? errorMessage;
 
@@ -92,6 +94,15 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> signUpPlayer() async {
+    if (!hasAcceptedTerms) {
+      setState(() {
+        successMessage = null;
+        errorMessage =
+            'Debes aceptar los Términos y Condiciones para crear tu cuenta.';
+      });
+      return;
+    }
+
     if (!signUpFormKey.currentState!.validate()) return;
 
     setState(() {
@@ -105,6 +116,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final password = registerPasswordController.text.trim();
     final phone = registerPhoneController.text.trim();
 
+    // TODO: Persist terms acceptance in backend if a dedicated field is added later.
     try {
       final userId = await signUpUseCase.execute(email, password, [
         'ROLE_USER',
@@ -252,6 +264,26 @@ class _SignInScreenState extends State<SignInScreen> {
                             passwordController: registerPasswordController,
                             phoneController: registerPhoneController,
                             isLoading: isLoading,
+                            hasAcceptedTerms: hasAcceptedTerms,
+                            onTermsChanged: (value) {
+                              setState(() {
+                                hasAcceptedTerms = value;
+                                if (value) {
+                                  errorMessage = null;
+                                }
+                              });
+                            },
+                            onTermsTap: () async {
+                              final accepted =
+                                  await TermsAndConditionsDialog.show(context);
+
+                              if (!mounted || accepted != true) return;
+
+                              setState(() {
+                                hasAcceptedTerms = true;
+                                errorMessage = null;
+                              });
+                            },
                             onSubmit: signUpPlayer,
                           ),
                   ),
@@ -437,6 +469,9 @@ class _RegisterForm extends StatelessWidget {
   final TextEditingController passwordController;
   final TextEditingController phoneController;
   final bool isLoading;
+  final bool hasAcceptedTerms;
+  final ValueChanged<bool> onTermsChanged;
+  final VoidCallback onTermsTap;
   final VoidCallback onSubmit;
 
   const _RegisterForm({
@@ -447,6 +482,9 @@ class _RegisterForm extends StatelessWidget {
     required this.passwordController,
     required this.phoneController,
     required this.isLoading,
+    required this.hasAcceptedTerms,
+    required this.onTermsChanged,
+    required this.onTermsTap,
     required this.onSubmit,
   });
 
@@ -508,6 +546,12 @@ class _RegisterForm extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const _AccountTypeBox(),
+          const SizedBox(height: 14),
+          _TermsAcceptanceCheckbox(
+            isAccepted: hasAcceptedTerms,
+            onChanged: onTermsChanged,
+            onTermsTap: onTermsTap,
+          ),
           const SizedBox(height: 18),
           ElevatedButton(
             onPressed: isLoading ? null : onSubmit,
@@ -520,6 +564,73 @@ class _RegisterForm extends StatelessWidget {
                 : const Text('Crear cuenta'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TermsAcceptanceCheckbox extends StatelessWidget {
+  final bool isAccepted;
+  final ValueChanged<bool> onChanged;
+  final VoidCallback onTermsTap;
+
+  const _TermsAcceptanceCheckbox({
+    required this.isAccepted,
+    required this.onChanged,
+    required this.onTermsTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => onChanged(!isAccepted),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(2, 4, 10, 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Checkbox(
+              value: isAccepted,
+              activeColor: AppColors.primary,
+              onChanged: (value) => onChanged(value ?? false),
+            ),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.3,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  children: [
+                    const TextSpan(text: 'Acepto los '),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onTermsTap,
+                        child: const Text(
+                          'Términos y Condiciones',
+                          style: TextStyle(
+                            color: AppColors.primaryDark,
+                            fontSize: 13,
+                            height: 1.3,
+                            fontWeight: FontWeight.w800,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const TextSpan(text: ' de Courtly'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
