@@ -23,7 +23,7 @@ class CourtlyBottomNavigationBar extends StatelessWidget {
         Navigator.pushReplacementNamed(context, AppRoutes.courts);
         break;
       case 3:
-        Navigator.pushReplacementNamed(context, AppRoutes.courts);
+        Navigator.pushReplacementNamed(context, AppRoutes.matches);
         break;
       case 4:
         Navigator.pushReplacementNamed(context, AppRoutes.profile);
