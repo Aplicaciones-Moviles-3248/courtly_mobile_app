@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
@@ -28,14 +29,15 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  final List<int> _hours = List.generate(15, (i) => i + 7);
+  List<String> _friends = [];
+  final List<String> _selectedFriends = [];
+  bool _splitPayment = false;
 
   @override
   void initState() {
     super.initState();
 
     final localStorage = LocalStorageService();
-
     final apiClient = ApiClient(localStorage);
 
     final bookingDataSource = BookingRemoteDataSource(apiClient);
@@ -45,6 +47,16 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     final userDataSource = UserProfileRemoteDataSource(apiClient);
     final userRepository = UserProfileRepositoryImpl(userDataSource);
     getMyUserProfileUseCase = GetMyUserProfileUseCase(userRepository);
+
+    _loadFriends();
+  }
+
+  Future<void> _loadFriends() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('my_friends') ?? ['Fabricio', 'Eduardo', 'Camilla', 'Pedro'];
+    setState(() {
+      _friends = list;
+    });
   }
 
   bool get _rangeValid =>
@@ -66,7 +78,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
   DateTime _buildDT(DateTime date, int hour) =>
       DateTime(date.year, date.month, date.day, hour);
-
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -94,13 +105,42 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     }
   }
 
+  Future<void> _pickTime(bool isStart) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: isStart ? (_selectedStartHour ?? 8) : (_selectedEndHour ?? 9),
+        minute: 0,
+      ),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: AppColors.darkNavy,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStart) {
+          _selectedStartHour = picked.hour;
+          if (_selectedEndHour != null && _selectedEndHour! <= picked.hour) {
+            _selectedEndHour = null;
+          }
+        } else {
+          _selectedEndHour = picked.hour;
+        }
+      });
+    }
+  }
+
   Future<void> _confirm(String courtId, double pricePerHour) async {
     setState(() { _isLoading = true; _errorMessage = null; });
 
     try {
-
       final profile = await getMyUserProfileUseCase.execute();
-
       final userId = profile.id.toString();
 
       final booking = await createBookingUseCase.execute(
@@ -177,8 +217,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)?.settings.arguments
     as Map<String, dynamic>?;
-    final courtId = (args?['courtId']     ?? '').toString();
-    final courtName =  args?['courtName']    as String? ?? 'Cancha';
+    final courtId = (args?['courtId'] ?? '').toString();
+    final courtName = args?['courtName'] as String? ?? 'Cancha';
     final pricePerHour = args?['pricePerHour'] ?? 0.0;
 
     return Scaffold(
@@ -202,7 +242,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -245,7 +284,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
             const SizedBox(height: 28),
 
-
             const _Label('Fecha'),
             const SizedBox(height: 10),
             GestureDetector(
@@ -266,7 +304,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                 child: Row(
                   children: [
                     Icon(Icons.calendar_today_rounded,
-                        size:  18,
+                        size: 18,
                         color: _selectedDate != null
                             ? AppColors.primary
                             : AppColors.textSecondary),
@@ -279,7 +317,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                         color: _selectedDate != null
                             ? AppColors.textPrimary
                             : AppColors.textSecondary,
-                        fontSize:   14,
+                        fontSize: 14,
                         fontWeight: _selectedDate != null
                             ? FontWeight.w600
                             : FontWeight.w400,
@@ -292,44 +330,151 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
             const SizedBox(height: 24),
 
-
             const _Label('Horario'),
             const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
-                  child: _HourDropdown(
-                    hint: 'Desde',
-                    value: _selectedStartHour,
-                    hours: _hours,
-                    onChanged: (h) => setState(() {
-                      _selectedStartHour = h;
-                      if (_selectedEndHour != null &&
-                          _selectedEndHour! <= h!) {
-                        _selectedEndHour = null;
-                      }
-                    }),
-                    hourLabel: _hourLabel,
+                  child: GestureDetector(
+                    onTap: () => _pickTime(true),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedStartHour != null
+                              ? AppColors.primary
+                              : AppColors.border,
+                          width: _selectedStartHour != null ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.access_time_rounded,
+                              size: 18,
+                              color: _selectedStartHour != null
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary),
+                          const SizedBox(width: 12),
+                          Text(
+                            _selectedStartHour != null
+                                ? _hourLabel(_selectedStartHour!)
+                                : 'Desde',
+                            style: TextStyle(
+                              color: _selectedStartHour != null
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
+                              fontSize: 14,
+                              fontWeight: _selectedStartHour != null
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _HourDropdown(
-                    hint: 'Hasta',
-                    value: _selectedEndHour,
-                    hours: _selectedStartHour != null
-                        ? _hours.where((h) => h > _selectedStartHour!).toList()
-                        : _hours,
-                    onChanged: (h) => setState(() => _selectedEndHour = h),
-                    hourLabel: _hourLabel,
+                  child: GestureDetector(
+                    onTap: () => _pickTime(false),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedEndHour != null
+                              ? AppColors.primary
+                              : AppColors.border,
+                          width: _selectedEndHour != null ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.access_time_rounded,
+                              size: 18,
+                              color: _selectedEndHour != null
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary),
+                          const SizedBox(width: 12),
+                          Text(
+                            _selectedEndHour != null
+                                ? _hourLabel(_selectedEndHour!)
+                                : 'Hasta',
+                            style: TextStyle(
+                              color: _selectedEndHour != null
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
+                              fontSize: 14,
+                              fontWeight: _selectedEndHour != null
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
 
-
             if (_canConfirm) ...[
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
+              const _Label('Invitar amigos a la reserva'),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: _friends.map((friend) {
+                    final isSelected = _selectedFriends.contains(friend);
+                    return CheckboxListTile(
+                      value: isSelected,
+                      title: Text(friend, style: const TextStyle(color: AppColors.textPrimary)),
+                      activeColor: AppColors.primary,
+                      checkColor: AppColors.darkNavy,
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedFriends.add(friend);
+                          } else {
+                            _selectedFriends.remove(friend);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _Label('Dividir pago equitativamente'),
+                  Switch(
+                    value: _splitPayment,
+                    activeThumbColor: AppColors.primary,
+                    activeTrackColor: AppColors.primary.withValues(alpha: 0.38),
+                    onChanged: (val) {
+                      setState(() {
+                        _splitPayment = val;
+                      });
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
               const _Label('Resumen'),
               const SizedBox(height: 10),
               Container(
@@ -350,18 +495,37 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                         label: 'Horario',
                         value: '${_hourLabel(_selectedStartHour!)} – ${_hourLabel(_selectedEndHour!)}'),
                     const SizedBox(height: 8),
+                    if (_selectedFriends.isNotEmpty) ...[
+                      _SummaryRow(
+                          label: 'Participantes',
+                          value: '${_selectedFriends.length + 1} personas (tú + ${_selectedFriends.join(", ")})'),
+                      const SizedBox(height: 8),
+                    ],
                     const Divider(color: AppColors.border),
                     const SizedBox(height: 8),
                     _SummaryRow(
-                      label: 'Total estimado',
+                      label: 'Total de la reserva',
                       value: 'S/ ${_totalPrice(pricePerHour).toStringAsFixed(0)}',
-                      isTotal: true,
+                      isTotal: !_splitPayment,
                     ),
+                    if (_splitPayment) ...[
+                      const SizedBox(height: 8),
+                      _SummaryRow(
+                        label: 'Tú pagas (1/${_selectedFriends.length + 1})',
+                        value: 'S/ ${(_totalPrice(pricePerHour) / (_selectedFriends.length + 1)).toStringAsFixed(2)}',
+                        isTotal: true,
+                      ),
+                      const SizedBox(height: 4),
+                      _SummaryRow(
+                        label: 'Cada amigo paga',
+                        value: 'S/ ${(_totalPrice(pricePerHour) / (_selectedFriends.length + 1)).toStringAsFixed(2)}',
+                        isTotal: false,
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
-
 
             if (_errorMessage != null) ...[
               const SizedBox(height: 16),
@@ -388,7 +552,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             ],
 
             const SizedBox(height: 32),
-
 
             ElevatedButton(
               onPressed: _canConfirm
@@ -433,57 +596,6 @@ class _Label extends StatelessWidget {
         fontSize: 15,
         fontWeight: FontWeight.w800),
   );
-}
-
-class _HourDropdown extends StatelessWidget {
-  final String hint;
-  final int? value;
-  final List<int> hours;
-  final ValueChanged<int?> onChanged;
-  final String Function(int) hourLabel;
-
-  const _HourDropdown({
-    required this.hint,
-    required this.value,
-    required this.hours,
-    required this.onChanged,
-    required this.hourLabel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color:        AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: value != null ? AppColors.primary : AppColors.border,
-          width: value != null ? 1.5 : 1,
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: value,
-          hint:  Text(hint,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14)),
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textSecondary),
-          items: hours
-              .map((h) =>
-              DropdownMenuItem(value: h, child: Text(hourLabel(h))))
-              .toList(),
-          onChanged: onChanged,
-          style: const TextStyle(
-              color:      AppColors.textPrimary,
-              fontSize:   14,
-              fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
 }
 
 class _SummaryRow extends StatelessWidget {

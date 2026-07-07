@@ -108,6 +108,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('Pagos')),
       bottomNavigationBar: const CourtlyBottomNavigationBar(currentIndex: 4),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreatePaymentSheet,

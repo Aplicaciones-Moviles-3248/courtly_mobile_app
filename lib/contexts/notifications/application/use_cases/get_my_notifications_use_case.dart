@@ -1,4 +1,4 @@
-import '../../domain/entities/notification.dart';
+import '../../domain/entities/app_notification.dart';
 import '../../domain/repositories/notification_repository.dart';
 
 class GetMyNotificationsUseCase {
@@ -6,7 +6,7 @@ class GetMyNotificationsUseCase {
 
   GetMyNotificationsUseCase(this.repository);
 
-  Future<List<NotificationEntity>> execute() {
+  Future<List<AppNotification>> execute() {
     return repository.getMyNotifications();
   }
 }

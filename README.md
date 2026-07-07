@@ -64,6 +64,12 @@ reviews        -> reseñas<br>
 notifications  -> notificaciones<br>
 analytics      -> métricas
 
+## USM08 - Valorar una cancha utilizada
+
+USM08 se implementa bajo el bounded context `lib/contexts/reviews`.
+Las reseñas se conectan con el detalle de canchas y la publicación se valida con reservas completadas del contexto `bookings`.
+Endpoint backend usado: `GET /api/v1/reviews` y `POST /api/v1/reviews`.
+
 ## Generic
 
 iam            -> autenticación y registro<br>
