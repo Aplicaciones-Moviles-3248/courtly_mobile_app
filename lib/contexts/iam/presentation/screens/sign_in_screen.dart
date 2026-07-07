@@ -106,24 +106,19 @@ class _SignInScreenState extends State<SignInScreen> {
     final phone = registerPhoneController.text.trim();
 
     try {
-      final userId = await signUpUseCase.execute(
-        email,
-        password,
-        ['ROLE_USER'],
-      );
+      final userId = await signUpUseCase.execute(email, password, [
+        'ROLE_USER',
+      ]);
 
       await signInUseCase.execute(email, password);
 
-      await apiClient.post(
-        '/user-profiles',
-        {
-          'name': fullName,
-          'email': email,
-          'phone': phone,
-          'imageUrl': 'https://i.pravatar.cc/300?img=12',
-          'userId': userId,
-        },
-      );
+      await apiClient.post('/user-profiles', {
+        'name': fullName,
+        'email': email,
+        'phone': phone,
+        'imageUrl': 'https://i.pravatar.cc/300?img=12',
+        'userId': userId,
+      });
 
       if (!mounted) return;
 
@@ -135,12 +130,20 @@ class _SignInScreenState extends State<SignInScreen> {
             ? 'No se pudo conectar con el servidor. Puede estar iniciando, intenta de nuevo en unos segundos.'
             : 'No se pudo crear la cuenta. Revisa los datos o intenta con otro correo.';
       });
-    } catch (_) {
+    } catch (error) {
+      debugPrint('REGISTER ERROR: $error');
+
       setState(() {
         isLoading = false;
-        errorMessage = 'No se pudo crear la cuenta. Intenta de nuevo.';
+        errorMessage = error.toString();
       });
     }
+    //catch (_) {
+    //setState(() {
+    //isLoading = false;
+    //errorMessage = 'No se pudo crear la cuenta. Intenta de nuevo.';
+    //});
+    //}
   }
 
   @override
@@ -234,37 +237,31 @@ class _SignInScreenState extends State<SignInScreen> {
                     duration: const Duration(milliseconds: 250),
                     child: isLoginSelected
                         ? _LoginForm(
-                      key: const ValueKey('login'),
-                      formKey: signInFormKey,
-                      emailController: loginEmailController,
-                      passwordController: loginPasswordController,
-                      isLoading: isLoading,
-                      onSubmit: signIn,
-                    )
+                            key: const ValueKey('login'),
+                            formKey: signInFormKey,
+                            emailController: loginEmailController,
+                            passwordController: loginPasswordController,
+                            isLoading: isLoading,
+                            onSubmit: signIn,
+                          )
                         : _RegisterForm(
-                      key: const ValueKey('register'),
-                      formKey: signUpFormKey,
-                      fullNameController: fullNameController,
-                      emailController: registerEmailController,
-                      passwordController: registerPasswordController,
-                      phoneController: registerPhoneController,
-                      isLoading: isLoading,
-                      onSubmit: signUpPlayer,
-                    ),
+                            key: const ValueKey('register'),
+                            formKey: signUpFormKey,
+                            fullNameController: fullNameController,
+                            emailController: registerEmailController,
+                            passwordController: registerPasswordController,
+                            phoneController: registerPhoneController,
+                            isLoading: isLoading,
+                            onSubmit: signUpPlayer,
+                          ),
                   ),
                   if (successMessage != null) ...[
                     const SizedBox(height: 14),
-                    _MessageBox(
-                      message: successMessage!,
-                      isSuccess: true,
-                    ),
+                    _MessageBox(message: successMessage!, isSuccess: true),
                   ],
                   if (errorMessage != null) ...[
                     const SizedBox(height: 14),
-                    _MessageBox(
-                      message: errorMessage!,
-                      isSuccess: false,
-                    ),
+                    _MessageBox(message: errorMessage!, isSuccess: false),
                   ],
                   const SizedBox(height: 16),
                   const Text(
@@ -351,12 +348,12 @@ class _TabButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(11),
           boxShadow: isSelected
               ? [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ]
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
               : [],
         ),
         child: Text(
@@ -421,10 +418,10 @@ class _LoginForm extends StatelessWidget {
             onPressed: isLoading ? null : onSubmit,
             child: isLoading
                 ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Iniciar sesión'),
           ),
         ],
@@ -516,10 +513,10 @@ class _RegisterForm extends StatelessWidget {
             onPressed: isLoading ? null : onSubmit,
             child: isLoading
                 ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Crear cuenta'),
           ),
         ],
@@ -641,10 +638,7 @@ class _MessageBox extends StatelessWidget {
   final String message;
   final bool isSuccess;
 
-  const _MessageBox({
-    required this.message,
-    required this.isSuccess,
-  });
+  const _MessageBox({required this.message, required this.isSuccess});
 
   @override
   Widget build(BuildContext context) {
