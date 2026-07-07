@@ -100,14 +100,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       await markAsReadUseCase.execute(item.id);
     } catch (_) {
     } finally {
-      if (mounted) {
-        setState(() {
-          notifications = notifications
-              .map((n) => n.id == item.id ? n.copyWith(isRead: true) : n)
-              .toList();
-          if (unreadCount > 0) unreadCount = unreadCount - 1;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        notifications = notifications
+            .map((n) => n.id == item.id ? n.copyWith(isRead: true) : n)
+            .toList();
+        if (unreadCount > 0) unreadCount = unreadCount - 1;
+      });
     }
   }
 
