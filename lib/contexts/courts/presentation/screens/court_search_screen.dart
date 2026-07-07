@@ -11,6 +11,9 @@ import '../../application/use_cases/get_courts_use_case.dart';
 import '../../domain/entities/court.dart';
 import '../../infrastructure/datasources/court_remote_data_source.dart';
 import '../../infrastructure/repositories/court_repository_impl.dart';
+import '../../../notifications/application/use_cases/get_unread_notifications_count_use_case.dart';
+import '../../../notifications/infrastructure/datasources/notification_remote_data_source.dart';
+import '../../../notifications/infrastructure/repositories/notification_repository_impl.dart';
 
 class CourtSearchScreen extends StatefulWidget {
   const CourtSearchScreen({super.key});
@@ -21,6 +24,9 @@ class CourtSearchScreen extends StatefulWidget {
 
 class _CourtSearchScreenState extends State<CourtSearchScreen> {
   late final GetCourtsUseCase getCourtsUseCase;
+
+  late final GetUnreadNotificationsCountUseCase getUnreadCountUseCase;
+  int unreadNotifications = 0;
 
   List<Court> allCourts = [];
   List<Court> filteredCourts = [];
@@ -40,12 +46,23 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
 
     final localStorage = LocalStorageService();
     final apiClient = ApiClient(localStorage);
-    final dataSource = CourtRemoteDataSource(apiClient);
-    final repository = CourtRepositoryImpl(dataSource);
 
-    getCourtsUseCase = GetCourtsUseCase(repository);
+    final courtDataSource = CourtRemoteDataSource(apiClient);
+    final courtRepository = CourtRepositoryImpl(courtDataSource);
+
+    getCourtsUseCase = GetCourtsUseCase(courtRepository);
+
+    final notificationDataSource =
+    NotificationRemoteDataSource(apiClient);
+
+    final notificationRepository =
+    NotificationRepositoryImpl(notificationDataSource);
+
+    getUnreadCountUseCase =
+        GetUnreadNotificationsCountUseCase(notificationRepository);
 
     loadCourts();
+    loadUnreadNotifications();
   }
 
   Future<void> loadCourts() async {
@@ -64,6 +81,18 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
         errorMessage = 'No se pudieron cargar las canchas.\nVerifica que el backend esté disponible.';
       });
     }
+  }
+
+  Future<void> loadUnreadNotifications() async {
+    try {
+      final result = await getUnreadCountUseCase.execute();
+
+      if (!mounted) return;
+
+      setState(() {
+        unreadNotifications = result.unreadCount;
+      });
+    } catch (_) {}
   }
 
   List<String> get locationOptions {
@@ -169,6 +198,52 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                             letterSpacing: 1.4,
                           ),
                         ),
+                      ),
+
+                      Stack(
+                        children: [
+                          IconButton(
+                            tooltip: 'Notificaciones',
+                            icon: const Icon(
+                              Icons.notifications_none_rounded,
+                              color: AppColors.textPrimary,
+                            ),
+                            onPressed: () async {
+                              await Navigator.pushNamed(
+                                context,
+                                AppRoutes.notifications,
+                              );
+                              loadUnreadNotifications();
+                            },
+                          ),
+                          if (unreadNotifications > 0)
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Text(
+                                  unreadNotifications > 99
+                                      ? '99+'
+                                      : unreadNotifications.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       IconButton(
                         onPressed: () =>
