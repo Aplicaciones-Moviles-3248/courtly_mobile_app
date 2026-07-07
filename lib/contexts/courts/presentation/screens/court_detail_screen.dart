@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/routes/app_routes.dart';
 import '../../../../shared/presentation/widgets/courtly_bottom_navigation_bar.dart';
 import '../../application/use_cases/get_court_detail_use_case.dart';
 import '../../domain/entities/court.dart';
@@ -8,6 +9,12 @@ import '../../../../shared/infrastructure/http/api_client.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
 import '../../infrastructure/datasources/court_remote_data_source.dart';
 import '../../infrastructure/repositories/court_repository_impl.dart';
+import '../../../bookings/application/use_cases/get_my_bookings_use_case.dart';
+import '../../../bookings/application/use_cases/cancel_booking_use_case.dart';
+import '../../../bookings/domain/entities/booking.dart';
+import '../../../bookings/domain/value_objects/booking_status.dart';
+import '../../../bookings/infrastructure/datasources/booking_remote_data_source.dart';
+import '../../../bookings/infrastructure/repositories/booking_repository_impl.dart';
 
 class CourtDetailScreen extends StatefulWidget {
   const CourtDetailScreen({super.key});
@@ -19,21 +26,67 @@ class CourtDetailScreen extends StatefulWidget {
 class _CourtDetailScreenState extends State<CourtDetailScreen> {
   late final GetCourtDetailUseCase getCourtDetailUseCase;
 
+  late final GetMyBookingsUseCase getMyBookingsUseCase;
+  late final CancelBookingUseCase cancelBookingUseCase;
+
+  late String courtId;
+
+  Booking? activeBooking;
+  bool loadingBooking = true;
+
   @override
   void initState() {
     super.initState();
 
     final localStorage = LocalStorageService();
     final apiClient = ApiClient(localStorage);
+
     final dataSource = CourtRemoteDataSource(apiClient);
     final repository = CourtRepositoryImpl(dataSource);
 
+    final bookingDataSource = BookingRemoteDataSource(apiClient);
+    final bookingRepository = BookingRepositoryImpl(bookingDataSource);
+
     getCourtDetailUseCase = GetCourtDetailUseCase(repository);
+
+    getMyBookingsUseCase = GetMyBookingsUseCase(bookingRepository);
+    cancelBookingUseCase = CancelBookingUseCase(bookingRepository);
+  }
+
+  Future<void> loadBookingStatus(String courtId) async {
+    try {
+      final bookings = await getMyBookingsUseCase.execute();
+
+      Booking? booking;
+
+      for (final b in bookings) {
+        if (b.courtId == courtId &&
+            (b.status == BookingStatus.confirmed ||
+                b.status == BookingStatus.pendingPayment)) {
+          booking = b;
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          activeBooking = booking;
+          loadingBooking = false;
+        });
+      }
+
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loadingBooking = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final courtId = ModalRoute.of(context)?.settings.arguments as String? ?? '1';
+    courtId = ModalRoute.of(context)?.settings.arguments as String? ?? '1';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Detalle')),
@@ -50,9 +103,13 @@ class _CourtDetailScreenState extends State<CourtDetailScreen> {
 
             final court = snapshot.data;
 
+            if (court != null && loadingBooking) {
+              loadBookingStatus(court.id);
+            }
+
             if (court == null) {
               return const Center(
-                child: Text('No se encontró la cancha.'),
+                child: Text('Court not found'),
               );
             }
 
@@ -145,18 +202,44 @@ class _CourtDetailScreenState extends State<CourtDetailScreen> {
                         const SizedBox(height: 12),
                         const _ReviewCard(),
                         const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Reservas próximamente disponibles',
-                                ),
-                              ),
-                            );
-                          },
-                          child: const Text('Reservar esta cancha'),
-                        ),
+                        if (loadingBooking)
+                          const Center(
+                            child: CircularProgressIndicator(),
+                          )
+                        else if (activeBooking == null)
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.createBooking,
+                                arguments: {
+                                  'courtId': court.id,
+                                  'pricePerHour': court.pricePerHour,
+                                },
+                              );
+                            },
+                            child: const Text('Reservar esta cancha'),
+                          )
+                        else
+                          OutlinedButton.icon(
+                              onPressed: () async {
+                                await cancelBookingUseCase.execute(activeBooking!.id);
+
+                                setState(() {
+                                  activeBooking = null;
+                                });
+
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Reserva cancelada exitosamente.'),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.cancel),
+                              label: const Text('Cancelar reserva'),
+                          ),
                       ],
                     ),
                   ),

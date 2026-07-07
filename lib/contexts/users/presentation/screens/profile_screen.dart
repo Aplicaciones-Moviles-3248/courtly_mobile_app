@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
+import '../../../../shared/infrastructure/http/api_exception.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
 import '../../../../shared/presentation/widgets/courtly_bottom_navigation_bar.dart';
 import '../../application/use_cases/get_my_user_profile_use_case.dart';
@@ -46,6 +48,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         profile = loadedProfile;
         isLoading = false;
         errorMessage = null;
+      });
+    } on ApiException catch (error) {
+      setState(() {
+        isLoading = false;
+        if (error.statusCode == 404) {
+          // El usuario tiene sesión válida pero aún no ha creado su perfil.
+          errorMessage = 'Aún no has completado tu perfil. Completa tus datos '
+              'para continuar.';
+        } else if (error.statusCode == 401 || error.statusCode == 403) {
+          errorMessage = 'Tu sesión expiró. Inicia sesión nuevamente.';
+        } else {
+          errorMessage = 'No se pudo cargar el perfil. Verifica que el backend '
+              'esté disponible e intenta de nuevo.';
+        }
       });
     } catch (error) {
       setState(() {
@@ -131,7 +147,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onEditProfile: goToEditProfile,
                   ),
                   const SizedBox(height: 18),
-                  const _RecentActivityCard(),
+                  const _StatsCard(),
+                  const SizedBox(height: 18),
+                  const _FriendsCard(),
                   const SizedBox(height: 18),
                   _SessionCard(onLogout: logout),
                 ],
@@ -343,8 +361,8 @@ class _ActionCard extends StatelessWidget {
   }
 }
 
-class _RecentActivityCard extends StatelessWidget {
-  const _RecentActivityCard();
+class _StatsCard extends StatelessWidget {
+  const _StatsCard();
 
   @override
   Widget build(BuildContext context) {
@@ -355,31 +373,70 @@ class _RecentActivityCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Actividad reciente',
+          const Text(
+            'Mis Estadísticas',
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 14),
-          _InfoItem(
-            title: 'Persistencia del perfil',
-            description: 'El backend guarda el perfil personal del usuario autenticado.',
-          ),
-          SizedBox(height: 10),
-          _InfoItem(
-            title: 'Imagen de perfil',
-            description: 'La URL de imagen forma parte del flujo actual del backend.',
-          ),
-          SizedBox(height: 10),
-          _InfoItem(
-            title: 'Modelo del backend',
-            description: 'La edición usa name, email, phone e imageUrl del contexto Users.',
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Expanded(
+                child: _StatItem(
+                  icon: Icons.sports_tennis,
+                  value: '12',
+                  label: 'Partidos',
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: _StatItem(
+                  icon: Icons.calendar_month,
+                  value: '4',
+                  label: 'Reservas',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F8FB),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.emoji_events, color: AppColors.primary, size: 24),
+                      SizedBox(height: 8),
+                      Text(
+                        'Amateur',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Nivel',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -387,41 +444,45 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-class _InfoItem extends StatelessWidget {
-  final String title;
-  final String description;
+class _StatItem extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
 
-  const _InfoItem({
-    required this.title,
-    required this.description,
+  const _StatItem({
+    required this.icon,
+    required this.value,
+    required this.label,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF4F8FB),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, color: AppColors.primary, size: 24),
+          const SizedBox(height: 8),
           Text(
-            title,
+            value,
             style: const TextStyle(
               color: AppColors.textPrimary,
+              fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
-            description,
+            label,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 13,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -511,6 +572,132 @@ class _ErrorView extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FriendsCard extends StatefulWidget {
+  const _FriendsCard();
+
+  @override
+  State<_FriendsCard> createState() => _FriendsCardState();
+}
+
+class _FriendsCardState extends State<_FriendsCard> {
+  List<String> _friends = [];
+  final _friendNameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFriends();
+  }
+
+  @override
+  void dispose() {
+    _friendNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFriends() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _friends = prefs.getStringList('my_friends') ?? ['Fabricio', 'Eduardo', 'Camilla', 'Pedro'];
+    });
+  }
+
+  Future<void> _addFriend() async {
+    final name = _friendNameController.text.trim();
+    if (name.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final updated = List<String>.from(_friends)..add(name);
+    await prefs.setStringList('my_friends', updated);
+    _friendNameController.clear();
+    _loadFriends();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Mis Amigos',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_friends.isEmpty)
+            const Text(
+              'Aún no has agregado amigos.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _friends.map((friend) {
+                return Chip(
+                  label: Text(friend),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                  labelStyle: const TextStyle(color: AppColors.darkNavy, fontWeight: FontWeight.bold),
+                  deleteIconColor: Colors.redAccent,
+                  onDeleted: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    final updated = List<String>.from(_friends)..remove(friend);
+                    await prefs.setStringList('my_friends', updated);
+                    _loadFriends();
+                  },
+                );
+              }).toList(),
+            ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _friendNameController,
+                  decoration: InputDecoration(
+                    hintText: 'Nombre del amigo',
+                    hintStyle: const TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: const Color(0xFFF4F8FB),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _addFriend,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  minimumSize: const Size(80, 42),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Agregar'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
