@@ -7,9 +7,9 @@ class ReviewRemoteDataSource {
   ReviewRemoteDataSource(this.apiClient);
 
   Future<List<ReviewModel>> getReviews() async {
-    final jsonList = await apiClient.getList('/reviews');
+    final list = await apiClient.getList('/reviews');
 
-    return jsonList
+    return list
         .map((json) => ReviewModel.fromJson(json as Map<String, dynamic>))
         .toList();
   }

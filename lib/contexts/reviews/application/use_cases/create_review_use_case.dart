@@ -16,9 +16,17 @@ class CreateReviewUseCase {
     required int bookingId,
     required int trainingSessionId,
   }) {
+    if (score < 1 || score > 5) {
+      throw ArgumentError('Score must be between 1 and 5.');
+    }
+
+    if (comment.trim().isEmpty) {
+      throw ArgumentError('Comment must not be empty.');
+    }
+
     return repository.createReview(
       score: score,
-      comment: comment,
+      comment: comment.trim(),
       type: type,
       targetId: targetId,
       targetType: targetType,

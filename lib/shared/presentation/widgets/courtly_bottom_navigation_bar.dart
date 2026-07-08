@@ -14,7 +14,7 @@ class CourtlyBottomNavigationBar extends StatelessWidget {
   void _goTo(BuildContext context, int index) {
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, AppRoutes.courts);
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
         break;
       case 1:
         Navigator.pushReplacementNamed(context, AppRoutes.courts);
@@ -23,7 +23,7 @@ class CourtlyBottomNavigationBar extends StatelessWidget {
         Navigator.pushReplacementNamed(context, AppRoutes.coaches);
         break;
       case 3:
-        Navigator.pushReplacementNamed(context, AppRoutes.courts);
+        Navigator.pushReplacementNamed(context, AppRoutes.matches);
         break;
       case 4:
         Navigator.pushReplacementNamed(context, AppRoutes.profile);
@@ -33,6 +33,8 @@ class CourtlyBottomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCoachesSelected = currentIndex == 2;
+
     return Container(
       height: 74,
       decoration: const BoxDecoration(
@@ -61,10 +63,10 @@ class CourtlyBottomNavigationBar extends StatelessWidget {
             child: Container(
               width: 58,
               height: 58,
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
+              decoration: BoxDecoration(
+                color: isCoachesSelected ? AppColors.primaryDark : AppColors.primary,
                 shape: BoxShape.circle,
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
                     color: Color(0x552EC4A6),
                     blurRadius: 18,
@@ -72,9 +74,9 @@ class CourtlyBottomNavigationBar extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.groups_2_outlined,
-                color: AppColors.darkNavy,
+              child: Icon(
+                isCoachesSelected ? Icons.groups_2 : Icons.groups_2_outlined,
+                color: isCoachesSelected ? Colors.white : AppColors.darkNavy,
                 size: 26,
               ),
             ),

@@ -136,6 +136,15 @@ class ApiClient {
     return _handleResponse(response);
   }
 
+  Future<Map<String, dynamic>> delete(String path) async {
+    final response = await _sendWithRetry(() async => _client.delete(
+      Uri.parse('$baseUrl$path'),
+      headers: await _headers(),
+    ));
+
+    return _handleResponse(response);
+  }
+
   Map<String, dynamic> _handleResponse(http.Response response) {
     if (_isSuccess(response.statusCode)) {
       if (response.body.isEmpty) return {};

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_spacing.dart';
+import '../../../../app/theme/app_shadows.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
 import '../../../../shared/presentation/widgets/courtly_bottom_navigation_bar.dart';
@@ -9,6 +11,9 @@ import '../../application/use_cases/get_courts_use_case.dart';
 import '../../domain/entities/court.dart';
 import '../../infrastructure/datasources/court_remote_data_source.dart';
 import '../../infrastructure/repositories/court_repository_impl.dart';
+import '../../../notifications/application/use_cases/get_unread_notifications_count_use_case.dart';
+import '../../../notifications/infrastructure/datasources/notification_remote_data_source.dart';
+import '../../../notifications/infrastructure/repositories/notification_repository_impl.dart';
 
 class CourtSearchScreen extends StatefulWidget {
   const CourtSearchScreen({super.key});
@@ -20,6 +25,9 @@ class CourtSearchScreen extends StatefulWidget {
 class _CourtSearchScreenState extends State<CourtSearchScreen> {
   late final GetCourtsUseCase getCourtsUseCase;
 
+  late final GetUnreadNotificationsCountUseCase getUnreadCountUseCase;
+  int unreadNotifications = 0;
+
   List<Court> allCourts = [];
   List<Court> filteredCourts = [];
 
@@ -30,6 +38,7 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
   String selectedSport = 'Todos';
   String selectedPrice = 'Todos';
   String selectedSchedule = 'Todos';
+  bool isFilterExpanded = false;
 
   @override
   void initState() {
@@ -37,12 +46,23 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
 
     final localStorage = LocalStorageService();
     final apiClient = ApiClient(localStorage);
-    final dataSource = CourtRemoteDataSource(apiClient);
-    final repository = CourtRepositoryImpl(dataSource);
 
-    getCourtsUseCase = GetCourtsUseCase(repository);
+    final courtDataSource = CourtRemoteDataSource(apiClient);
+    final courtRepository = CourtRepositoryImpl(courtDataSource);
+
+    getCourtsUseCase = GetCourtsUseCase(courtRepository);
+
+    final notificationDataSource =
+    NotificationRemoteDataSource(apiClient);
+
+    final notificationRepository =
+    NotificationRepositoryImpl(notificationDataSource);
+
+    getUnreadCountUseCase =
+        GetUnreadNotificationsCountUseCase(notificationRepository);
 
     loadCourts();
+    loadUnreadNotifications();
   }
 
   Future<void> loadCourts() async {
@@ -61,6 +81,18 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
         errorMessage = 'No se pudieron cargar las canchas.\nVerifica que el backend esté disponible.';
       });
     }
+  }
+
+  Future<void> loadUnreadNotifications() async {
+    try {
+      final result = await getUnreadCountUseCase.execute();
+
+      if (!mounted) return;
+
+      setState(() {
+        unreadNotifications = result.unreadCount;
+      });
+    } catch (_) {}
   }
 
   List<String> get locationOptions {
@@ -150,7 +182,7 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 430),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 24, 22, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg, AppSpacing.md, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -158,7 +190,7 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                     children: [
                       const Expanded(
                         child: Text(
-                          'BÚSQUEDA DE CANCHAS',
+                           'BÚSQUEDA DE CANCHAS',
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -166,6 +198,52 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                             letterSpacing: 1.4,
                           ),
                         ),
+                      ),
+
+                      Stack(
+                        children: [
+                          IconButton(
+                            tooltip: 'Notificaciones',
+                            icon: const Icon(
+                              Icons.notifications_none_rounded,
+                              color: AppColors.textPrimary,
+                            ),
+                            onPressed: () async {
+                              await Navigator.pushNamed(
+                                context,
+                                AppRoutes.notifications,
+                              );
+                              loadUnreadNotifications();
+                            },
+                          ),
+                          if (unreadNotifications > 0)
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Text(
+                                  unreadNotifications > 99
+                                      ? '99+'
+                                      : unreadNotifications.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       IconButton(
                         onPressed: () =>
@@ -178,7 +256,7 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  AppSpacing.gapXs,
                   const Text(
                     'Encuentra tu cancha',
                     style: TextStyle(
@@ -188,7 +266,7 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  AppSpacing.gapSm,
                   const Text(
                     'Explora canchas con imagen, precio por hora y horarios disponibles',
                     style: TextStyle(
@@ -196,38 +274,103 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  _FilterCard(
-                    selectedLocation: selectedLocation,
-                    selectedSport: selectedSport,
-                    selectedPrice: selectedPrice,
-                    selectedSchedule: selectedSchedule,
-                    locationOptions: locationOptions,
-                    sportOptions: sportOptions,
-                    onLocationChanged: (value) {
-                      setState(() {
-                        selectedLocation = value;
-                      });
-                    },
-                    onSportChanged: (value) {
-                      setState(() {
-                        selectedSport = value;
-                      });
-                    },
-                    onPriceChanged: (value) {
-                      setState(() {
-                        selectedPrice = value;
-                      });
-                    },
-                    onScheduleChanged: (value) {
-                      setState(() {
-                        selectedSchedule = value;
-                      });
-                    },
-                    onApplyFilters: applyFilters,
-                    onClearFilters: clearFilters,
+                  AppSpacing.gapMd,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          readOnly: true,
+                          onTap: () {
+                            setState(() {
+                              isFilterExpanded = !isFilterExpanded;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Filtrar por ubicación, deporte...',
+                            prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary, size: 20),
+                            suffixIcon: Icon(
+                              isFilterExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.textSecondary,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            isFilterExpanded = !isFilterExpanded;
+                          });
+                        },
+                        icon: Icon(
+                          Icons.filter_list_rounded,
+                          color: isFilterExpanded ? AppColors.primary : AppColors.textPrimary,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: isFilterExpanded ? AppColors.primary.withValues(alpha: 0.1) : const Color(0xFFF4F8FB),
+                          padding: const EdgeInsets.all(12),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return SizeTransition(
+                        sizeFactor: animation,
+                        alignment: Alignment.topCenter,
+                        child: child,
+                      );
+                    },
+                    child: isFilterExpanded
+                        ? Padding(
+                            key: const ValueKey('filter_expanded'),
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: _FilterCard(
+                              selectedLocation: selectedLocation,
+                              selectedSport: selectedSport,
+                              selectedPrice: selectedPrice,
+                              selectedSchedule: selectedSchedule,
+                              locationOptions: locationOptions,
+                              sportOptions: sportOptions,
+                              onLocationChanged: (value) {
+                                setState(() {
+                                  selectedLocation = value;
+                                });
+                              },
+                              onSportChanged: (value) {
+                                setState(() {
+                                  selectedSport = value;
+                                });
+                              },
+                              onPriceChanged: (value) {
+                                setState(() {
+                                  selectedPrice = value;
+                                });
+                              },
+                              onScheduleChanged: (value) {
+                                setState(() {
+                                  selectedSchedule = value;
+                                });
+                              },
+                              onApplyFilters: () {
+                                applyFilters();
+                                setState(() {
+                                  isFilterExpanded = false;
+                                });
+                              },
+                              onClearFilters: () {
+                                clearFilters();
+                                setState(() {
+                                  isFilterExpanded = false;
+                                });
+                              },
+                            ),
+                          )
+                        : const SizedBox(key: ValueKey('filter_collapsed')),
+                  ),
+                  AppSpacing.gapMd,
                   _ResultSummary(
                     total: filteredCourts.length,
                     hasFilters: selectedLocation != 'Todas' ||
@@ -235,7 +378,7 @@ class _CourtSearchScreenState extends State<CourtSearchScreen> {
                         selectedPrice != 'Todos' ||
                         selectedSchedule != 'Todos',
                   ),
-                  const SizedBox(height: 10),
+                  AppSpacing.gapSm,
                   Expanded(
                     child: _buildCourtResults(),
                   ),
@@ -332,18 +475,12 @@ class _FilterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: AppShadows.shadowMd,
       ),
       child: Column(
         children: [
@@ -353,7 +490,7 @@ class _FilterCard extends StatelessWidget {
             options: locationOptions,
             onChanged: onLocationChanged,
           ),
-          const SizedBox(height: 10),
+          AppSpacing.gapSm,
           Row(
             children: [
               Expanded(
@@ -364,7 +501,7 @@ class _FilterCard extends StatelessWidget {
                   onChanged: onSportChanged,
                 ),
               ),
-              const SizedBox(width: 10),
+              AppSpacing.gapSm,
               Expanded(
                 child: _FilterDropdown(
                   label: 'PRECIO MÁXIMO',
@@ -381,7 +518,7 @@ class _FilterCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          AppSpacing.gapSm,
           _FilterDropdown(
             label: 'HORARIO',
             value: selectedSchedule,
@@ -392,12 +529,12 @@ class _FilterCard extends StatelessWidget {
             ],
             onChanged: onScheduleChanged,
           ),
-          const SizedBox(height: 14),
+          AppSpacing.gapMd,
           ElevatedButton(
             onPressed: onApplyFilters,
             child: const Text('Aplicar filtros'),
           ),
-          const SizedBox(height: 8),
+          AppSpacing.gapSm,
           TextButton(
             onPressed: onClearFilters,
             child: const Text('Limpiar filtros'),
@@ -436,7 +573,7 @@ class _FilterDropdown extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 4),
+        AppSpacing.gapXs,
         DropdownButtonFormField<String>(
           value: safeValue,
           isExpanded: true,
@@ -444,23 +581,9 @@ class _FilterDropdown extends StatelessWidget {
             Icons.keyboard_arrow_down_rounded,
             color: AppColors.textSecondary,
           ),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFFF4F8FB),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(22),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(22),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(22),
-              borderSide: const BorderSide(color: AppColors.primary),
-            ),
-          ),
+          decoration: const InputDecoration(
+            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          ), // Inherits clean border and background from AppTheme
           items: options.map((option) {
             return DropdownMenuItem<String>(
               value: option,
@@ -533,7 +656,7 @@ class _CourtCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
         ),
         clipBehavior: Clip.antiAlias,
@@ -548,6 +671,24 @@ class _CourtCard extends StatelessWidget {
                   width: double.infinity,
                   fit: BoxFit.cover,
                   semanticLabel: 'Foto de la cancha ${court.name}',
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 96,
+                      width: double.infinity,
+                      color: const Color(0xFFE2E8F0),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       height: 96,

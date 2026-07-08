@@ -6,7 +6,5 @@ class GetReviewsUseCase {
 
   GetReviewsUseCase(this.repository);
 
-  Future<List<Review>> execute() {
-    return repository.getReviews();
-  }
+  Future<List<Review>> execute() => repository.getReviews();
 }
