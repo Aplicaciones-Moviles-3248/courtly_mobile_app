@@ -15,6 +15,11 @@ import '../../contexts/users/presentation/screens/coaches_list_screen.dart';
 import '../../contexts/notifications/presentation/screens/notifications_screen.dart';
 
 class AppRoutes {
+  /// Permite navegar desde fuera del arbol de widgets (p.ej. al detectar una
+  /// sesion invalida en el ApiClient) sin necesitar un BuildContext.
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   static const String signIn = '/sign-in';
   static const String home = '/home';
   static const String courts = '/courts';

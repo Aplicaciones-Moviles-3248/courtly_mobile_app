@@ -4,10 +4,14 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../../app/routes/app_routes.dart';
 import '../storage/local_storage_service.dart';
 import 'api_exception.dart';
 
 class ApiClient {
+  /// Evita disparar el logout global mas de una vez por cada sesion
+  /// invalidada (varias requests concurrentes pueden recibir 401 a la vez).
+  static bool _sessionExpiredInProgress = false;
   // Base URL del backend. Por defecto apunta al backend desplegado en Render.
   // Para usar un backend local, ejecutar con:
   //   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api/v1   (emulador Android)
@@ -87,72 +91,111 @@ class ApiClient {
       Duration(milliseconds: 800 * (1 << attempt));
 
   Future<Map<String, dynamic>> get(String path) async {
+    final headers = await _headers();
     final response = await _sendWithRetry(() async => _client.get(
           Uri.parse('$baseUrl$path'),
-          headers: await _headers(),
+          headers: headers,
         ));
 
-    return _handleResponse(response);
+    return _handleResponse(response, headers);
   }
 
   Future<List<dynamic>> getList(String path) async {
+    final headers = await _headers();
     final response = await _sendWithRetry(() async => _client.get(
           Uri.parse('$baseUrl$path'),
-          headers: await _headers(),
+          headers: headers,
         ));
 
-    return _handleListResponse(response);
+    return _handleListResponse(response, headers);
   }
 
   Future<Map<String, dynamic>> post(
     String path,
     Map<String, dynamic> body,
   ) async {
+    final headers = await _headers();
     final response = await _sendWithRetry(() async => _client.post(
           Uri.parse('$baseUrl$path'),
-          headers: await _headers(),
+          headers: headers,
           body: jsonEncode(body),
         ));
 
-    return _handleResponse(response);
+    return _handleResponse(response, headers);
   }
 
   Future<Map<String, dynamic>> put(
     String path,
     Map<String, dynamic> body,
   ) async {
+    final headers = await _headers();
     final response = await _sendWithRetry(() async => _client.put(
           Uri.parse('$baseUrl$path'),
-          headers: await _headers(),
+          headers: headers,
           body: jsonEncode(body),
         ));
 
-    return _handleResponse(response);
+    return _handleResponse(response, headers);
   }
 
   Future<Map<String, dynamic>> delete(String path) async {
+    final headers = await _headers();
     final response = await _sendWithRetry(() async => _client.delete(
       Uri.parse('$baseUrl$path'),
-      headers: await _headers(),
+      headers: headers,
     ));
 
-    return _handleResponse(response);
+    return _handleResponse(response, headers);
   }
 
-  Map<String, dynamic> _handleResponse(http.Response response) {
+  Map<String, dynamic> _handleResponse(
+    http.Response response,
+    Map<String, String> requestHeaders,
+  ) {
     if (_isSuccess(response.statusCode)) {
       if (response.body.isEmpty) return {};
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
+    _maybeHandleSessionExpired(response, requestHeaders);
     throw _errorFor(response);
   }
 
-  List<dynamic> _handleListResponse(http.Response response) {
+  List<dynamic> _handleListResponse(
+    http.Response response,
+    Map<String, String> requestHeaders,
+  ) {
     if (_isSuccess(response.statusCode)) {
       if (response.body.isEmpty) return [];
       return jsonDecode(response.body) as List<dynamic>;
     }
+    _maybeHandleSessionExpired(response, requestHeaders);
     throw _errorFor(response);
+  }
+
+  /// Si la request llevaba un token y el backend responde 401, la sesion
+  /// dejo de ser valida (expiro o el token es invalido): se limpia y se
+  /// redirige a login para que el usuario pueda volver a entrar, en vez de
+  /// dejarlo varado en una pantalla con un error generico.
+  void _maybeHandleSessionExpired(
+    http.Response response,
+    Map<String, String> requestHeaders,
+  ) {
+    final hadToken = requestHeaders.containsKey('Authorization');
+    if (response.statusCode != 401 || !hadToken) return;
+    if (_sessionExpiredInProgress) return;
+    _sessionExpiredInProgress = true;
+
+    unawaited(() async {
+      try {
+        await localStorageService.clearSession();
+        AppRoutes.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          AppRoutes.signIn,
+          (route) => false,
+        );
+      } finally {
+        _sessionExpiredInProgress = false;
+      }
+    }());
   }
 
   bool _isSuccess(int status) => status >= 200 && status < 300;

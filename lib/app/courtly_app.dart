@@ -10,6 +10,7 @@ class CourtlyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: AppRoutes.navigatorKey,
       title: 'Courtly',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
