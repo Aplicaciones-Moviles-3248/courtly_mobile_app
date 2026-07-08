@@ -341,7 +341,8 @@ class _CourtDetailScreenState extends State<CourtDetailScreen> {
       final reviewPayload = ReviewModel.toCreateJson(
         score: result.score,
         comment: result.comment,
-        courtId: court.id,
+        targetType: 'COURT',
+        targetId: court.id,
         userId: profileForPublishing.id.toString(),
         bookingId: bookingForPublishing.id,
       );
@@ -357,7 +358,8 @@ class _CourtDetailScreenState extends State<CourtDetailScreen> {
       await createReviewUseCase.execute(
         score: result.score,
         comment: result.comment,
-        courtId: court.id,
+        targetType: 'COURT',
+        targetId: court.id,
         userId: profileForPublishing.id.toString(),
         bookingId: bookingForPublishing.id,
       );

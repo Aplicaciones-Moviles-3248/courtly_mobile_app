@@ -6,8 +6,10 @@ abstract class ReviewRepository {
   Future<Review> createReview({
     required int score,
     required String comment,
-    required String courtId,
+    required String targetType,
+    required String targetId,
     required String userId,
-    required String bookingId,
+    String? bookingId,
+    String? trainingSessionId,
   });
 }

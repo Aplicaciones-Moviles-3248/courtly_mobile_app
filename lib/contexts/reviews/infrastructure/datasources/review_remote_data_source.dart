@@ -17,16 +17,20 @@ class ReviewRemoteDataSource {
   Future<ReviewModel> createReview({
     required int score,
     required String comment,
-    required String courtId,
+    required String targetType,
+    required String targetId,
     required String userId,
-    required String bookingId,
+    String? bookingId,
+    String? trainingSessionId,
   }) async {
     final body = ReviewModel.toCreateJson(
       score: score,
       comment: comment,
-      courtId: courtId,
+      targetType: targetType,
+      targetId: targetId,
       userId: userId,
       bookingId: bookingId,
+      trainingSessionId: trainingSessionId,
     );
 
     final json = await apiClient.post('/reviews', body);

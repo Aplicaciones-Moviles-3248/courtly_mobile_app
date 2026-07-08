@@ -8,20 +8,28 @@ class ReviewRepositoryImpl implements ReviewRepository {
   ReviewRepositoryImpl(this.dataSource);
 
   @override
-  Future<List<Review>> getReviews() => dataSource.getReviews();
+  Future<List<Review>> getReviews() {
+    return dataSource.getReviews();
+  }
 
   @override
   Future<Review> createReview({
     required int score,
     required String comment,
-    required String courtId,
+    required String targetType,
+    required String targetId,
     required String userId,
-    required String bookingId,
-  }) => dataSource.createReview(
-    score: score,
-    comment: comment,
-    courtId: courtId,
-    userId: userId,
-    bookingId: bookingId,
-  );
+    String? bookingId,
+    String? trainingSessionId,
+  }) {
+    return dataSource.createReview(
+      score: score,
+      comment: comment,
+      targetType: targetType,
+      targetId: targetId,
+      userId: userId,
+      bookingId: bookingId,
+      trainingSessionId: trainingSessionId,
+    );
+  }
 }

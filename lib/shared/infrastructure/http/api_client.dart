@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -41,6 +42,9 @@ class ApiClient {
 
   Future<Map<String, String>> _headers() async {
     final token = await localStorageService.getToken();
+
+    debugPrint('Token disponible: ${token != null && token.isNotEmpty}');
+    debugPrint('Token preview: ${token == null ? 'null' : token.substring(0, token.length > 12 ? 12 : token.length)}');
 
     return {
       'Content-Type': 'application/json',

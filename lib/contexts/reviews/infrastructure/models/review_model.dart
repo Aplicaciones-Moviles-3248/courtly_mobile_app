@@ -26,7 +26,7 @@ class ReviewModel extends Review {
       type: json['type'] as String? ?? '',
       targetId: (json['targetId'] ?? '').toString(),
       targetType: json['targetType'] as String? ?? '',
-      bookingId: (json['bookingId'] ?? '').toString(),
+      bookingId: json['bookingId']?.toString(),
       trainingSessionId: json['trainingSessionId']?.toString(),
       createdAt: createdAtValue == null
           ? null
@@ -39,19 +39,25 @@ class ReviewModel extends Review {
   static Map<String, dynamic> toCreateJson({
     required int score,
     required String comment,
-    required String courtId,
+    required String targetType,
+    required String targetId,
     required String userId,
-    required String bookingId,
+    String? bookingId,
+    String? trainingSessionId,
   }) {
     return {
       'score': score,
       'comment': comment,
-      'type': 'COURT',
-      'targetId': int.tryParse(courtId) ?? courtId,
-      'targetType': 'COURT',
+      'type': targetType,
+      'targetId': int.tryParse(targetId) ?? targetId,
+      'targetType': targetType,
       'userId': int.tryParse(userId) ?? userId,
-      'bookingId': int.tryParse(bookingId) ?? bookingId,
-      'trainingSessionId': null,
+      'bookingId': bookingId == null
+          ? null
+          : (int.tryParse(bookingId) ?? bookingId),
+      'trainingSessionId': trainingSessionId == null
+          ? null
+          : (int.tryParse(trainingSessionId) ?? trainingSessionId),
     };
   }
 

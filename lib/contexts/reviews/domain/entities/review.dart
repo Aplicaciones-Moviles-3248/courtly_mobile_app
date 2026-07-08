@@ -5,7 +5,7 @@ class Review {
   final String type;
   final String targetId;
   final String targetType;
-  final String bookingId;
+  final String? bookingId;
   final String? trainingSessionId;
   final DateTime? createdAt;
   final String userId;

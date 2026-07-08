@@ -9,9 +9,11 @@ class CreateReviewUseCase {
   Future<Review> execute({
     required int score,
     required String comment,
-    required String courtId,
+    required String targetType,
+    required String targetId,
     required String userId,
-    required String bookingId,
+    String? bookingId,
+    String? trainingSessionId,
   }) {
     if (score < 1 || score > 5) {
       throw ArgumentError('Score must be between 1 and 5.');
@@ -24,9 +26,11 @@ class CreateReviewUseCase {
     return repository.createReview(
       score: score,
       comment: comment.trim(),
-      courtId: courtId,
+      targetType: targetType,
+      targetId: targetId,
       userId: userId,
       bookingId: bookingId,
+      trainingSessionId: trainingSessionId,
     );
   }
 }

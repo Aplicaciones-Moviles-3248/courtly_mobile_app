@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/app_colors.dart';
 import '../../../app/routes/app_routes.dart';
+import '../../../app/theme/app_colors.dart';
 
 class CourtlyBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
