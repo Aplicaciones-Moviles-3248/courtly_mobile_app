@@ -3,6 +3,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/infrastructure/http/api_client.dart';
 import '../../../../shared/infrastructure/storage/local_storage_service.dart';
 import '../../../../shared/presentation/widgets/courtly_bottom_navigation_bar.dart';
+import '../../../trainingsessions/presentation/screens/create_training_session_screen.dart';
 
 class CoachesListScreen extends StatefulWidget {
   const CoachesListScreen({super.key});
@@ -50,128 +51,15 @@ class _CoachesListScreenState extends State<CoachesListScreen> {
   }
 
   Future<void> _requestTraining(Map<String, dynamic> coach) async {
-    final dateController = TextEditingController(text: DateTime.now().add(const Duration(days: 1)).toString().split(' ')[0]);
-    final notesController = TextEditingController(text: 'Deseo agendar una sesión privada.');
-
-    final requested = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Solicitar a ${coach['name']}',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  coach['expertise'],
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                TextField(
-                  controller: dateController,
-                  decoration: InputDecoration(
-                    labelText: 'Fecha (YYYY-MM-DD)',
-                    filled: true,
-                    fillColor: const Color(0xFFF4F8FB),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: notesController,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: 'Notas / Mensaje',
-                    filled: true,
-                    fillColor: const Color(0xFFF4F8FB),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      try {
-                        // Resolve user profile id
-                        final userJson = await apiClient.get('/user-profiles/me');
-                        final playerId = userJson['id'];
-
-                        // TODO(coaches): courtId/availabilityId están fijos porque
-                        // aún no existe un endpoint de disponibilidad del coach.
-                        // Cuando exista, reemplazar por la disponibilidad real
-                        // seleccionada por el jugador.
-                        final body = {
-                          'playerId': playerId,
-                          'coachId': coach['id'],
-                          'courtId': 1,
-                          'availabilityId': 1,
-                          'startTime': '${dateController.text}T08:00:00',
-                          'endTime': '${dateController.text}T09:00:00',
-                          'price': 50.00
-                        };
-
-                        await apiClient.post('/training-sessions', body);
-                        if (ctx.mounted) Navigator.pop(ctx, true);
-                      } catch (e) {
-                        // NO fingimos éxito: si la solicitud falla, el coach nunca
-                        // la recibiría. Cerramos indicando el fallo para mostrar el
-                        // error real al usuario.
-                        if (ctx.mounted) Navigator.pop(ctx, false);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: const Text('Enviar Solicitud', style: TextStyle(color: AppColors.darkNavy, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    final requested = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CreateTrainingSessionScreen(
+          coachId: '${coach['id'] ?? ''}',
+          coachName: coach['name']?.toString() ?? 'Entrenador',
+          coachExpertise: coach['expertise']?.toString() ?? '',
+          coachPhone: coach['phone']?.toString() ?? '',
+        ),
+      ),
     );
 
     if (!mounted) return;
