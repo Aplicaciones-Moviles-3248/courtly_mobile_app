@@ -16,7 +16,7 @@ import '../../../matches/domain/entities/match_join_request.dart';
 import '../../../matches/infrastructure/datasources/match_remote_data_source.dart';
 import '../../../matches/infrastructure/repositories/match_repository_impl.dart';
 import '../../../notifications/application/use_cases/get_my_notifications_use_case.dart';
-import '../../../notifications/domain/entities/app_notification.dart';
+import '../../../notifications/domain/entities/notification.dart';
 import '../../../notifications/infrastructure/datasources/notification_remote_data_source.dart';
 import '../../../notifications/infrastructure/repositories/notification_repository_impl.dart';
 import '../../application/use_cases/get_my_user_profile_use_case.dart';
@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final ApproveMatchJoinRequestUseCase _approveJoinRequestUseCase;
 
   List<Match> _feedMatches = [];
-  List<AppNotification> _notifications = [];
+  List<NotificationEntity> _notifications = [];
   Map<String, List<MatchJoinRequest>> _pendingApprovalsByMatchId = {};
   bool _isLoading = true;
   String? _errorMessage;
@@ -88,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
         user = null;
       }
 
-      List<AppNotification> notifications = [];
+      List<NotificationEntity> notifications = [];
       try {
         notifications = await _getMyNotificationsUseCase.execute();
         notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));

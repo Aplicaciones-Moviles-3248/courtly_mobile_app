@@ -12,6 +12,7 @@ import '../../contexts/matches/presentation/screens/matches_screen.dart';
 import '../../contexts/matches/presentation/screens/create_match_screen.dart';
 import '../../contexts/users/presentation/screens/home_screen.dart';
 import '../../contexts/users/presentation/screens/coaches_list_screen.dart';
+import '../../contexts/notifications/presentation/screens/notifications_screen.dart';
 
 class AppRoutes {
   static const String signIn = '/sign-in';
@@ -26,6 +27,7 @@ class AppRoutes {
   static const String editProfile = '/users/edit-profile';
   static const String createBooking = '/bookings/create';
   static const String myBookings    = '/bookings/my';
+  static const String notifications = '/notifications';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -41,6 +43,7 @@ class AppRoutes {
       editProfile: (context) => const EditProfileScreen(),
       createBooking: (context) => const CreateBookingScreen(),
       myBookings:    (context) => const MyBookingsScreen(),
+      notifications: (context) => const NotificationsScreen()
     };
   }
 }
