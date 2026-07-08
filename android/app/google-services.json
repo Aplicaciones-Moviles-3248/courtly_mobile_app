@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "703414081833",
+    "project_id": "courtly-6ed41",
+    "storage_bucket": "courtly-6ed41.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:703414081833:android:c4aca2cf4dba041170bf38",
+        "android_client_info": {
+          "package_name": "pe.edu.upc.courtly_mobile_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDS3-aeIIiNC8zQjYjkZ-NfnOkzrW7Mh1E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

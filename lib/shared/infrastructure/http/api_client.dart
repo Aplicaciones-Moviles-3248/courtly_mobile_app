@@ -19,7 +19,7 @@ class ApiClient {
   //   flutter run --dart-define=API_BASE_URL=http://localhost:8080/api/v1  (iOS / web / desktop)
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://courtly-backend.onrender.com/api/v1',
+    defaultValue: 'https://backend-production-d772.up.railway.app/api/v1',
   );
 
   final LocalStorageService localStorageService;
